@@ -1,0 +1,146 @@
+@import "tailwindcss";
+
+@layer base {
+  html, body {
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  #root {
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+/* Ensure no KaTeX mathematical formula breaks the viewport width on mobile */
+.katex-display {
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  max-width: 100% !important;
+  padding: 0.25rem 0 !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+.katex {
+  max-width: 100% !important;
+  white-space: normal !important;
+}
+
+/* Custom subtle scrollbars */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Handwritten Typography & Realistic Notebook Paper */
+.font-handwriting {
+  font-family: 'Caveat', 'Kalam', cursive;
+}
+
+.font-kalam {
+  font-family: 'Kalam', 'Caveat', cursive;
+}
+
+.font-architect {
+  font-family: 'Architects Daughter', cursive;
+}
+
+/* Realistic Lined Notebook Paper Background */
+.notebook-paper-lined {
+  background-color: #fdfbf7;
+  background-image: 
+    linear-gradient(90deg, transparent 48px, #fca5a5 48px, #fca5a5 50px, transparent 50px),
+    linear-gradient(#e2e8f0 1px, transparent 1px);
+  background-size: 100% 100%, 100% 32px;
+  background-position: 0 0, 0 16px;
+  color: #1e293b;
+}
+
+/* Realistic Grid/Squared Math Paper Background */
+.notebook-paper-grid {
+  background-color: #faf8f5;
+  background-image: 
+    linear-gradient(#e2e8f0 1px, transparent 1px),
+    linear-gradient(90deg, #e2e8f0 1px, transparent 1px);
+  background-size: 24px 24px;
+  color: #0f172a;
+}
+
+/* Dark Mode Notebook Paper */
+.notebook-paper-dark {
+  background-color: #0b1120;
+  background-image: 
+    linear-gradient(rgba(51, 65, 85, 0.4) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(51, 65, 85, 0.4) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Marker / Highlighter effects for handwritten style */
+.marker-yellow {
+  background: linear-gradient(104deg, rgba(254, 240, 138, 0.7) 0.9%, rgba(253, 224, 71, 0.85) 2.4%, rgba(254, 240, 138, 0.6) 95.8%);
+  border-radius: 4px;
+  padding: 0.15rem 0.4rem;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.marker-cyan {
+  background: linear-gradient(104deg, rgba(186, 230, 253, 0.7) 0.9%, rgba(125, 211, 252, 0.85) 2.4%, rgba(186, 230, 253, 0.6) 95.8%);
+  border-radius: 4px;
+  padding: 0.15rem 0.4rem;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.marker-green {
+  background: linear-gradient(104deg, rgba(187, 247, 208, 0.7) 0.9%, rgba(134, 239, 172, 0.85) 2.4%, rgba(187, 247, 208, 0.6) 95.8%);
+  border-radius: 4px;
+  padding: 0.15rem 0.4rem;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  
+  header, nav, .sticky, button, input, #btn-back-to-calc, #btn-open-menu-drawer {
+    display: none !important;
+  }
+  
+  #notebook-sheet {
+    box-shadow: none !important;
+    border: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: white !important;
+    color: black !important;
+  }
+
+  .katex {
+    font-size: 1.1em !important;
+  }
+}
