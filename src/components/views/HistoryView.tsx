@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { MathSolution } from '../../types';
+import { ConfirmDialog } from '../ConfirmDialog';
 import { MathRenderer } from '../MathRenderer';
 import {
   History,
@@ -35,6 +36,8 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [onlyFavorites, setOnlyFavorites] = useState<boolean>(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [confirmAction, setConfirmAction] = useState<'clear' | 'delete' | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   const filteredHistory = useMemo(() => {
     const query = searchQuery.toLowerCase().trim();
@@ -92,11 +95,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
             {history.length > 0 && (
               <button
                 type="button"
-                onClick={() => {
-                  if (window.confirm('Tem certeza que deseja limpar todo o histórico de cálculos?')) {
-                    onClearHistory();
-                  }
-                }}
+                onClick={() => setConfirmAction('clear')}
                 className="px-3.5 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -191,9 +190,8 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                       <button
                         type="button"
                         onClick={() => {
-                          if (window.confirm('Excluir este cálculo do histórico?')) {
-                            onDeleteItem(item.id);
-                          }
+                          setPendingDeleteId(item.id);
+                          setConfirmAction('delete');
                         }}
                         className="p-2 rounded-xl border border-slate-800 bg-slate-950 text-slate-500 hover:text-rose-400 hover:border-rose-500/40 transition-all cursor-pointer"
                         title="Excluir este cálculo do histórico"
@@ -239,6 +237,23 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
           })}
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={confirmAction !== null}
+        title={confirmAction === 'clear' ? 'Limpar histórico?' : 'Excluir cálculo?'}
+        description={confirmAction === 'clear' ? 'Todos os exercícios salvos serão removidos desta sessão. Esta ação não pode ser desfeita.' : 'Este exercício será removido permanentemente do histórico desta sessão.'}
+        confirmLabel={confirmAction === 'clear' ? 'Limpar tudo' : 'Excluir cálculo'}
+        onCancel={() => {
+          setConfirmAction(null);
+          setPendingDeleteId(null);
+        }}
+        onConfirm={() => {
+          if (confirmAction === 'clear') onClearHistory();
+          if (confirmAction === 'delete' && pendingDeleteId) onDeleteItem(pendingDeleteId);
+          setConfirmAction(null);
+          setPendingDeleteId(null);
+        }}
+      />
     </div>
   );
 };
