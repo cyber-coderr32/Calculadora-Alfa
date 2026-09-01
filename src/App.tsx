@@ -6,6 +6,7 @@ import { SolutionDisplay } from './components/SolutionDisplay';
 import { HandwrittenNotebookDisplay } from './components/HandwrittenNotebookDisplay';
 import { PhotomathResolutionView } from './components/PhotomathResolutionView';
 import { MathRenderer } from './components/MathRenderer';
+import { PWAInstallPrompt } from './components/PWAInstallPrompt';
 import { FormulaLibraryView } from './components/views/FormulaLibraryView';
 import { GrapherStudioView } from './components/views/GrapherStudioView';
 import { GeometryStudioView } from './components/views/GeometryStudioView';
@@ -457,6 +458,7 @@ export default function App() {
 
   return (
     <div ref={appRootRef} className={`min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col antialiased selection:bg-indigo-500 selection:text-white w-full max-w-full overflow-x-hidden transition-colors duration-200 ${isFullscreen ? 'fixed inset-0 z-[9999] overflow-y-auto' : ''}`}>
+      <PWAInstallPrompt />
       {/* Top Header Bar */}
       <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-2.5 sm:px-4 py-2 sm:py-2.5 w-full max-w-full transition-colors duration-200">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-1.5 sm:gap-2 w-full">
