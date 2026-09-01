@@ -387,7 +387,13 @@ app.post('/api/transcribe-math', async (req, res) => {
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      // The preview proxy does not forward Vite's WebSocket upgrade reliably.
+      // Disable HMR explicitly here because inline config takes precedence over vite.config.ts.
+      server: {
+        middlewareMode: true,
+        hmr: false,
+        watch: null,
+      },
       appType: 'spa',
     });
     app.use(vite.middlewares);
