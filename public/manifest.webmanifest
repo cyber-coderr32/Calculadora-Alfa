@@ -1,0 +1,15 @@
+{
+  "name": "α Alfa — Calculadora Matemática",
+  "short_name": "α Alfa",
+  "description": "Calculadora matemática inteligente com resolução passo a passo.",
+  "lang": "pt-BR",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f8fafc",
+  "theme_color": "#4f46e5",
+  "icons": [
+    { "src": "/pwa-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

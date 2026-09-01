@@ -21,12 +21,12 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 let aiClient: GoogleGenAI | null = null;
 function getGenAI(): GoogleGenAI {
   if (!aiClient) {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY?.trim();
     if (!apiKey) {
-      console.warn('GEMINI_API_KEY is not set in environment.');
+      throw new Error('A chave GEMINI_API_KEY não está configurada no servidor.');
     }
     aiClient = new GoogleGenAI({
-      apiKey: apiKey || '',
+      apiKey,
       httpOptions: {
         headers: {
           'User-Agent': 'aistudio-build',
@@ -38,7 +38,7 @@ function getGenAI(): GoogleGenAI {
 }
 
 // Fallback model list to ensure 100% uptime even if a specific model experiences temporary demand spikes (503/429)
-const CANDIDATE_MODELS = ['gemini-2.5-flash', 'gemini-3.7-flash', 'gemini-2.0-flash'];
+const CANDIDATE_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'];
 
 async function generateWithFallback(options: {
   contents: any;
@@ -314,10 +314,18 @@ Por favor, resolva o mesmo problema usando um MÉTODO OU CAMINHO ALTERNATIVO (po
       },
     });
 
-    let rawText = response.text || '{}';
-    // Clean potential markdown code blocks
+    let rawText = response.text || '';
+    // Clean potential markdown code blocks and isolate the JSON object.
     rawText = rawText.replace(/```json\s*/gi, '').replace(/```\s*$/gi, '').trim();
-    const parsedData = JSON.parse(rawText);
+    const jsonStart = rawText.indexOf('{');
+    const jsonEnd = rawText.lastIndexOf('}');
+    if (jsonStart < 0 || jsonEnd <= jsonStart) {
+      throw new Error('A IA não retornou uma resposta estruturada válida.');
+    }
+    const parsedData = JSON.parse(rawText.slice(jsonStart, jsonEnd + 1));
+    if (!parsedData.problemTitle || !Array.isArray(parsedData.steps) || !parsedData.finalAnswer) {
+      throw new Error('A resposta da IA está incompleta. Tente novamente.');
+    }
 
     const solutionResult = {
       id: 'sol_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),

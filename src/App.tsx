@@ -6,6 +6,7 @@ import { SolutionDisplay } from './components/SolutionDisplay';
 import { HandwrittenNotebookDisplay } from './components/HandwrittenNotebookDisplay';
 import { PhotomathResolutionView } from './components/PhotomathResolutionView';
 import { MathRenderer } from './components/MathRenderer';
+import { PWAInstallPrompt } from './components/PWAInstallPrompt';
 import { FormulaLibraryView } from './components/views/FormulaLibraryView';
 import { GrapherStudioView } from './components/views/GrapherStudioView';
 import { GeometryStudioView } from './components/views/GeometryStudioView';
@@ -67,6 +68,7 @@ export default function App() {
   const [isOfflineMode, setIsOfflineMode] = useState<boolean>(false);
   const [isOnline, setIsOnline] = useState<boolean>(typeof navigator !== 'undefined' ? navigator.onLine : true);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const appRootRef = useRef<HTMLDivElement | null>(null);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('alfa_theme');
@@ -94,82 +96,48 @@ export default function App() {
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-  // Fullscreen State Sync & Keyboard listener
+  // Keep the button in sync with native fullscreen, including Escape/browser controls.
   useEffect(() => {
-    const handleFullscreenChange = () => {
-      const isFs = Boolean(
-        document.fullscreenElement ||
-        (document as any).webkitFullscreenElement ||
-        (document as any).mozFullScreenElement ||
-        (document as any).msFullscreenElement
-      );
-      // Only set if native event fired
-      if (isFs) setIsFullscreen(true);
+    const syncFullscreenState = () => {
+      const doc = document as any;
+      setIsFullscreen(Boolean(doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement));
     };
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isFullscreen) {
-        setIsFullscreen(false);
-        const doc = document as any;
-        if (doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement) {
-          if (doc.exitFullscreen) doc.exitFullscreen().catch(() => {});
-          else if (doc.webkitExitFullscreen) doc.webkitExitFullscreen();
-          else if (doc.mozCancelFullScreen) doc.mozCancelFullScreen();
-          else if (doc.msExitFullscreen) doc.msExitFullscreen();
-        }
-      }
-    };
-
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
-    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
-    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
-    window.addEventListener('keydown', handleKeyDown);
-
+    syncFullscreenState();
+    document.addEventListener('fullscreenchange', syncFullscreenState);
+    document.addEventListener('webkitfullscreenchange', syncFullscreenState);
+    document.addEventListener('mozfullscreenchange', syncFullscreenState);
+    document.addEventListener('MSFullscreenChange', syncFullscreenState);
     return () => {
-      document.removeEventListener('fullscreenchange', handleFullscreenChange);
-      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
-      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
-      document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
-      window.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('fullscreenchange', syncFullscreenState);
+      document.removeEventListener('webkitfullscreenchange', syncFullscreenState);
+      document.removeEventListener('mozfullscreenchange', syncFullscreenState);
+      document.removeEventListener('MSFullscreenChange', syncFullscreenState);
     };
-  }, [isFullscreen]);
+  }, []);
 
   const toggleFullscreen = async () => {
-    const nextState = !isFullscreen;
-    setIsFullscreen(nextState);
+    const doc = document as any;
+    const target = appRootRef.current as any;
+    const activeElement = doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement;
 
     try {
-      const doc = document as any;
-      const docEl = document.documentElement as any;
-
-      if (nextState) {
-        if (!doc.fullscreenElement && !doc.webkitFullscreenElement && !doc.mozFullScreenElement && !doc.msFullscreenElement) {
-          if (docEl.requestFullscreen) {
-            await docEl.requestFullscreen().catch(() => {});
-          } else if (docEl.webkitRequestFullscreen) {
-            docEl.webkitRequestFullscreen();
-          } else if (docEl.mozRequestFullScreen) {
-            docEl.mozRequestFullScreen();
-          } else if (docEl.msRequestFullscreen) {
-            docEl.msRequestFullscreen();
-          }
-        }
-      } else {
-        if (doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement) {
-          if (doc.exitFullscreen) {
-            await doc.exitFullscreen().catch(() => {});
-          } else if (doc.webkitExitFullscreen) {
-            doc.webkitExitFullscreen();
-          } else if (doc.mozCancelFullScreen) {
-            doc.mozCancelFullScreen();
-          } else if (doc.msExitFullscreen) {
-            doc.msExitFullscreen();
-          }
-        }
+      if (activeElement) {
+        if (doc.exitFullscreen) await doc.exitFullscreen();
+        else if (doc.webkitExitFullscreen) doc.webkitExitFullscreen();
+        else if (doc.mozCancelFullScreen) doc.mozCancelFullScreen();
+        else if (doc.msExitFullscreen) doc.msExitFullscreen();
+      } else if (target) {
+        if (target.requestFullscreen) await target.requestFullscreen();
+        else if (target.webkitRequestFullscreen) target.webkitRequestFullscreen();
+        else if (target.mozRequestFullScreen) target.mozRequestFullScreen();
+        else if (target.msRequestFullscreen) target.msRequestFullscreen();
+        else setIsFullscreen(true);
       }
-    } catch (e) {
-      console.warn('Native fullscreen not available or blocked in container, using responsive fullscreen viewport layout:', e);
+    } catch (err) {
+      // Preview iframes may block the native API; keep a usable viewport mode.
+      console.warn('Native fullscreen unavailable; using viewport fullscreen mode.', err);
+      setIsFullscreen(!activeElement);
     }
   };
 
@@ -489,7 +457,8 @@ export default function App() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col antialiased selection:bg-indigo-500 selection:text-white w-full max-w-full overflow-x-hidden transition-colors duration-200">
+    <div ref={appRootRef} className={`min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col antialiased selection:bg-indigo-500 selection:text-white w-full max-w-full overflow-x-hidden transition-colors duration-200 ${isFullscreen ? 'fixed inset-0 z-[9999] overflow-y-auto' : ''}`}>
+      <PWAInstallPrompt />
       {/* Top Header Bar */}
       <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-2.5 sm:px-4 py-2 sm:py-2.5 w-full max-w-full transition-colors duration-200">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-1.5 sm:gap-2 w-full">
