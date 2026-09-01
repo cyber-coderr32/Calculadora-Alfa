@@ -1,9 +1,20 @@
+export interface MathSubStep {
+  beforeLatex?: string;
+  afterLatex?: string;
+  explanation: string;
+  tip?: string;
+  highlightedTerm?: string;
+}
+
 export interface MathStep {
   stepNumber: number;
   title: string;
   explanation: string;
   mathExpression: string; // LaTeX
+  beforeExpression?: string; // Expression before applying this transformation
+  afterExpression?: string; // Expression after applying this transformation
   tipOrRule?: string;
+  subSteps?: MathSubStep[];
 }
 
 export interface FinalAnswer {
@@ -11,6 +22,7 @@ export interface FinalAnswer {
   approximate?: string;
   explanation?: string;
   unit?: string;
+  alternativeForms?: string[];
 }
 
 export interface Verification {

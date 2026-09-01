@@ -351,9 +351,11 @@ export const SolutionDisplay: React.FC<SolutionDisplayProps> = ({
           )}
         </div>
 
-        <p className="text-sm text-slate-200 mt-2 font-medium">
-          {solution.finalAnswer.explanation}
-        </p>
+        {solution.finalAnswer.explanation && (
+          <div className="text-sm text-slate-200 mt-2 font-medium">
+            <MixedTextRenderer text={solution.finalAnswer.explanation} />
+          </div>
+        )}
       </div>
 
       {/* 100% STEP-BY-STEP RESOLUTION BREAKDOWN */}
@@ -497,9 +499,11 @@ export const SolutionDisplay: React.FC<SolutionDisplayProps> = ({
             <div className="py-2 px-3 bg-slate-900 rounded-xl border border-slate-800">
               <MathRenderer math={solution.verification.mathExpression} block />
             </div>
-            <p className="text-xs text-slate-400 italic">
-              Nota: {solution.verification.notes}
-            </p>
+            {solution.verification.notes && (
+              <div className="text-xs text-slate-400 italic">
+                <MixedTextRenderer text={`Nota: ${solution.verification.notes}`} />
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -542,7 +546,9 @@ export const SolutionDisplay: React.FC<SolutionDisplayProps> = ({
                     <span className="text-[11px] font-bold text-indigo-400 mb-1 block">
                       Questão de Treino #{idx + 1}
                     </span>
-                    <p className="text-xs font-semibold text-slate-200 mb-2">{p.problem}</p>
+                    <div className="text-xs font-semibold text-slate-200 mb-2">
+                      <MixedTextRenderer text={p.problem} />
+                    </div>
                     {p.latex && (
                       <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-800 text-xs mb-2">
                         <MathRenderer math={p.latex} block />
@@ -565,9 +571,12 @@ export const SolutionDisplay: React.FC<SolutionDisplayProps> = ({
                         <div className="font-bold text-emerald-400">
                           Resposta: <MathRenderer math={p.answer} inline />
                         </div>
-                        <div className="text-slate-300 text-[11px]">
-                          <span className="font-semibold text-amber-300">Dica:</span> {p.hint}
-                        </div>
+                        {p.hint && (
+                          <div className="text-slate-300 text-[11px]">
+                            <span className="font-semibold text-amber-300">Dica:</span>{' '}
+                            <MixedTextRenderer text={p.hint} inline />
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

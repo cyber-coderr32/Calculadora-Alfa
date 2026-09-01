@@ -4,11 +4,14 @@ import { MathKeyboard } from './components/MathKeyboard';
 import { CameraScanner } from './components/CameraScanner';
 import { SolutionDisplay } from './components/SolutionDisplay';
 import { HandwrittenNotebookDisplay } from './components/HandwrittenNotebookDisplay';
+import { PhotomathResolutionView } from './components/PhotomathResolutionView';
 import { MathRenderer } from './components/MathRenderer';
 import { FormulaLibraryView } from './components/views/FormulaLibraryView';
 import { GrapherStudioView } from './components/views/GrapherStudioView';
+import { GeometryStudioView } from './components/views/GeometryStudioView';
 import { OfflineToolsView } from './components/views/OfflineToolsView';
 import { HistoryView } from './components/views/HistoryView';
+import { PhotomathInputDisplay } from './components/PhotomathInputDisplay';
 import { solveOffline } from './engine/offlineSolver';
 import {
   Calculator,
@@ -41,9 +44,13 @@ import {
   Pencil,
   Maximize,
   Minimize,
+  Shapes,
+  Box,
+  Sun,
+  Moon,
 } from 'lucide-react';
 
-export type AppMenu = 'solver' | 'notebook_steps' | 'scanner' | 'grapher' | 'tools' | 'formulas' | 'history';
+export type AppMenu = 'solver' | 'resolution' | 'notebook_steps' | 'scanner' | 'grapher' | 'geometry' | 'tools' | 'formulas' | 'history';
 
 export default function App() {
   const [currentMenu, setCurrentMenu] = useState<AppMenu>('solver');
@@ -60,10 +67,34 @@ export default function App() {
   const [isOfflineMode, setIsOfflineMode] = useState<boolean>(false);
   const [isOnline, setIsOnline] = useState<boolean>(typeof navigator !== 'undefined' ? navigator.onLine : true);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('alfa_theme');
+      if (saved === 'dark' || saved === 'light') return saved;
+      return 'light'; // Default to pristine white theme as requested
+    }
+    return 'light';
+  });
+
+  // Sync theme with document class
+  useEffect(() => {
+    try {
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+        document.documentElement.classList.remove('light');
+      } else {
+        document.documentElement.classList.remove('dark');
+        document.documentElement.classList.add('light');
+      }
+      localStorage.setItem('alfa_theme', theme);
+    } catch (e) {
+      console.warn('Theme storage error:', e);
+    }
+  }, [theme]);
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-  // Fullscreen API State Sync
+  // Fullscreen State Sync & Keyboard listener
   useEffect(() => {
     const handleFullscreenChange = () => {
       const isFs = Boolean(
@@ -72,50 +103,73 @@ export default function App() {
         (document as any).mozFullScreenElement ||
         (document as any).msFullscreenElement
       );
-      setIsFullscreen(isFs);
+      // Only set if native event fired
+      if (isFs) setIsFullscreen(true);
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isFullscreen) {
+        setIsFullscreen(false);
+        const doc = document as any;
+        if (doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement) {
+          if (doc.exitFullscreen) doc.exitFullscreen().catch(() => {});
+          else if (doc.webkitExitFullscreen) doc.webkitExitFullscreen();
+          else if (doc.mozCancelFullScreen) doc.mozCancelFullScreen();
+          else if (doc.msExitFullscreen) doc.msExitFullscreen();
+        }
+      }
     };
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
     document.addEventListener('mozfullscreenchange', handleFullscreenChange);
     document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+    window.addEventListener('keydown', handleKeyDown);
 
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
       document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
       document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
       document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+      window.removeEventListener('keydown', handleKeyDown);
     };
-  }, []);
+  }, [isFullscreen]);
 
   const toggleFullscreen = async () => {
+    const nextState = !isFullscreen;
+    setIsFullscreen(nextState);
+
     try {
       const doc = document as any;
       const docEl = document.documentElement as any;
 
-      if (!doc.fullscreenElement && !doc.webkitFullscreenElement && !doc.mozFullScreenElement && !doc.msFullscreenElement) {
-        if (docEl.requestFullscreen) {
-          await docEl.requestFullscreen();
-        } else if (docEl.webkitRequestFullscreen) {
-          await docEl.webkitRequestFullscreen();
-        } else if (docEl.mozRequestFullScreen) {
-          await docEl.mozRequestFullScreen();
-        } else if (docEl.msRequestFullscreen) {
-          await docEl.msRequestFullscreen();
+      if (nextState) {
+        if (!doc.fullscreenElement && !doc.webkitFullscreenElement && !doc.mozFullScreenElement && !doc.msFullscreenElement) {
+          if (docEl.requestFullscreen) {
+            await docEl.requestFullscreen().catch(() => {});
+          } else if (docEl.webkitRequestFullscreen) {
+            docEl.webkitRequestFullscreen();
+          } else if (docEl.mozRequestFullScreen) {
+            docEl.mozRequestFullScreen();
+          } else if (docEl.msRequestFullscreen) {
+            docEl.msRequestFullscreen();
+          }
         }
       } else {
-        if (doc.exitFullscreen) {
-          await doc.exitFullscreen();
-        } else if (doc.webkitExitFullscreen) {
-          await doc.webkitExitFullscreen();
-        } else if (doc.mozCancelFullScreen) {
-          await doc.mozCancelFullScreen();
-        } else if (doc.msExitFullscreen) {
-          await doc.msExitFullscreen();
+        if (doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement) {
+          if (doc.exitFullscreen) {
+            await doc.exitFullscreen().catch(() => {});
+          } else if (doc.webkitExitFullscreen) {
+            doc.webkitExitFullscreen();
+          } else if (doc.mozCancelFullScreen) {
+            doc.mozCancelFullScreen();
+          } else if (doc.msExitFullscreen) {
+            doc.msExitFullscreen();
+          }
         }
       }
     } catch (e) {
-      console.warn('Fullscreen request could not be completed:', e);
+      console.warn('Native fullscreen not available or blocked in container, using responsive fullscreen viewport layout:', e);
     }
   };
 
@@ -172,6 +226,27 @@ export default function App() {
     } catch (e) {
       console.warn('LocalStorage clear error:', e);
     }
+  };
+
+  const handleDeleteHistoryItem = (id: string) => {
+    setHistory((prev) => {
+      const updated = prev.filter((item) => item.id !== id);
+      try {
+        localStorage.setItem('math_calc_history', JSON.stringify(updated));
+      } catch (e) {
+        console.warn('LocalStorage save error:', e);
+      }
+      return updated;
+    });
+    setFavorites((prev) => {
+      const updated = prev.filter((favId) => favId !== id);
+      try {
+        localStorage.setItem('math_calc_favs', JSON.stringify(updated));
+      } catch (e) {
+        console.warn('LocalStorage fav error:', e);
+      }
+      return updated;
+    });
   };
 
   const handleToggleFavorite = (id: string) => {
@@ -238,7 +313,7 @@ export default function App() {
           saveToHistory(localSol);
           setIsLoading(false);
           if (shouldOpenNotebook) {
-            setCurrentMenu('notebook_steps');
+            setCurrentMenu('resolution');
           }
           return;
         }
@@ -250,7 +325,7 @@ export default function App() {
       setCurrentSolution(result);
       saveToHistory(result);
       if (shouldOpenNotebook) {
-        setCurrentMenu('notebook_steps');
+        setCurrentMenu('resolution');
       }
     } catch (err: any) {
       console.error('Solve error:', err);
@@ -261,7 +336,7 @@ export default function App() {
           setCurrentSolution(fallbackSol);
           saveToHistory(fallbackSol);
           if (shouldOpenNotebook) {
-            setCurrentMenu('notebook_steps');
+            setCurrentMenu('resolution');
           }
           return;
         } catch (e) {
@@ -384,6 +459,13 @@ export default function App() {
       desc: 'Plote f(x), visualize curvas, raízes e tabela X×Y',
     },
     {
+      id: 'geometry' as AppMenu,
+      name: 'Estúdio de Geometria & Sólidos 3D',
+      icon: Shapes,
+      badge: '2D & 3D',
+      desc: 'Triângulos, Círculos, Esferas, Cones, Cilindros, Áreas e Volumes',
+    },
+    {
       id: 'tools' as AppMenu,
       name: 'Ferramentas & Conversores Offline',
       icon: Sliders,
@@ -407,24 +489,25 @@ export default function App() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col antialiased selection:bg-indigo-500 selection:text-white w-full max-w-full overflow-x-hidden">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col antialiased selection:bg-indigo-500 selection:text-white w-full max-w-full overflow-x-hidden transition-colors duration-200">
       {/* Top Header Bar */}
-      <header className="sticky top-0 z-40 bg-slate-950/95 backdrop-blur-md border-b border-slate-800 px-2.5 sm:px-4 py-2 sm:py-2.5 w-full max-w-full">
+      <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-2.5 sm:px-4 py-2 sm:py-2.5 w-full max-w-full transition-colors duration-200">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-1.5 sm:gap-2 w-full">
-          {/* Logo & Title */}
+          {/* Logo & Title: α Alfa */}
           <div
             onClick={() => setCurrentMenu('solver')}
             className="flex items-center gap-1.5 sm:gap-2.5 cursor-pointer group min-w-0"
           >
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-600/30 text-white group-hover:scale-105 transition-transform shrink-0">
-              <Calculator className="w-4 h-4" />
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-600 flex items-center justify-center shadow-md shadow-indigo-600/30 text-white group-hover:scale-105 transition-transform shrink-0">
+              <span className="font-serif text-lg sm:text-xl font-black leading-none select-none">α</span>
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
-                <h1 className="text-sm sm:text-base md:text-lg font-black text-white tracking-tight truncate">
-                  SuperCalculadora
+                <h1 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-1">
+                  <span className="font-serif text-lg sm:text-xl text-indigo-600 dark:text-indigo-400 font-black">α</span>
+                  <span>Alfa</span>
                 </h1>
-                <span className="hidden md:flex text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase tracking-wide items-center gap-1 shrink-0">
+                <span className="hidden md:flex text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-emerald-500/20 text-indigo-700 dark:text-emerald-300 border border-indigo-200 dark:border-emerald-500/30 uppercase tracking-wide items-center gap-1 shrink-0">
                   <CheckCircle2 className="w-3 h-3" />
                   Passo a Passo
                 </span>
@@ -433,13 +516,38 @@ export default function App() {
           </div>
 
           {/* Header Action Buttons */}
-          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+            {/* Theme Toggle Button (Branco / Escuro) */}
+            <button
+              type="button"
+              id="btn-toggle-theme"
+              onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+              className={`h-8 px-2 sm:px-2.5 rounded-xl border text-xs font-bold flex items-center gap-1 transition-all cursor-pointer select-none active:scale-95 ${
+                theme === 'light'
+                  ? 'bg-amber-50 hover:bg-amber-100 border-amber-300/80 text-amber-900 shadow-xs'
+                  : 'bg-slate-900 hover:bg-slate-800 border-slate-700/80 text-amber-300'
+              }`}
+              title={theme === 'light' ? 'Mudar para Tema Escuro' : 'Mudar para Tema Branco (Claro)'}
+            >
+              {theme === 'light' ? (
+                <>
+                  <Sun className="w-3.5 h-3.5 text-amber-500" />
+                  <span className="hidden xs:inline">Branco</span>
+                </>
+              ) : (
+                <>
+                  <Moon className="w-3.5 h-3.5 text-indigo-400" />
+                  <span className="hidden xs:inline">Escuro</span>
+                </>
+              )}
+            </button>
+
             {/* If there's a solution and we are not in notebook mode, quick jump to notebook button on tablet/desktop */}
             {currentSolution && currentMenu === 'solver' && (
               <button
                 type="button"
                 onClick={() => setCurrentMenu('notebook_steps')}
-                className="hidden sm:flex h-8 px-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold items-center gap-1.5 transition-all cursor-pointer animate-pulse select-none"
+                className="hidden sm:flex h-8 px-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-700 dark:text-amber-300 border border-amber-500/40 text-xs font-bold items-center gap-1.5 transition-all cursor-pointer animate-pulse select-none"
                 title="Abrir Resolução no Caderno"
               >
                 <Pencil className="w-3.5 h-3.5" />
@@ -454,19 +562,19 @@ export default function App() {
               onClick={toggleFullscreen}
               className={`h-8 px-2 sm:px-2.5 rounded-xl border text-xs font-bold flex items-center gap-1 transition-all cursor-pointer select-none ${
                 isFullscreen
-                  ? 'bg-purple-950/60 border-purple-500/50 text-purple-300 hover:bg-purple-900/80'
-                  : 'bg-slate-900 hover:bg-slate-800 border-slate-700/80 text-slate-300 hover:text-white'
+                  ? 'bg-purple-100 dark:bg-purple-950/60 border-purple-300 dark:border-purple-500/50 text-purple-800 dark:text-purple-300'
+                  : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 border-slate-300 dark:border-slate-700/80 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
               }`}
               title={isFullscreen ? 'Sair da Tela Cheia' : 'Abrir em Tela Cheia Total (Fullscreen)'}
             >
               {isFullscreen ? (
                 <>
-                  <Minimize className="w-3.5 h-3.5 text-purple-400" />
+                  <Minimize className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
                   <span className="hidden md:inline">Janela</span>
                 </>
               ) : (
                 <>
-                  <Maximize className="w-3.5 h-3.5 text-indigo-400" />
+                  <Maximize className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                   <span className="hidden md:inline">Tela Cheia</span>
                 </>
               )}
@@ -478,19 +586,19 @@ export default function App() {
               onClick={() => setIsOfflineMode(!isOfflineMode)}
               className={`h-8 px-2 sm:px-2.5 rounded-xl border text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer select-none ${
                 isOfflineMode || !isOnline
-                  ? 'bg-emerald-950/60 border-emerald-500/50 text-emerald-300'
-                  : 'bg-indigo-950/60 border-indigo-500/50 text-indigo-300'
+                  ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-500/50 text-emerald-800 dark:text-emerald-300'
+                  : 'bg-indigo-50 dark:bg-indigo-950/60 border-indigo-300 dark:border-indigo-500/50 text-indigo-800 dark:text-indigo-300'
               }`}
               title={isOfflineMode ? 'Motor Offline Ativo' : 'Modo IA Ativo'}
             >
               {isOfflineMode || !isOnline ? (
                 <>
-                  <WifiOff className="w-3.5 h-3.5 text-emerald-400" />
+                  <WifiOff className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                   <span className="hidden md:inline">Offline</span>
                 </>
               ) : (
                 <>
-                  <Cpu className="w-3.5 h-3.5 text-indigo-400" />
+                  <Cpu className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                   <span className="hidden md:inline">IA</span>
                 </>
               )}
@@ -512,123 +620,54 @@ export default function App() {
       </header>
 
       {/* Main Container */}
-      <main className="flex-1 max-w-4xl w-full mx-auto p-2.5 sm:p-4 md:p-6 space-y-4 min-w-0 overflow-x-hidden">
+      <main className="flex-1 flex flex-col max-w-4xl w-full mx-auto p-2.5 sm:p-4 md:p-6 space-y-4 min-w-0 overflow-x-hidden">
         {/* ERROR NOTIFICATION */}
         {error && (
-          <div className="p-3.5 rounded-2xl bg-red-950/40 border border-red-800/50 text-red-200 text-xs sm:text-sm flex items-center justify-between gap-3 animate-fade-in">
+          <div className="p-3.5 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/50 text-red-800 dark:text-red-200 text-xs sm:text-sm flex items-center justify-between gap-3 animate-fade-in">
             <div className="flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-400 shrink-0" />
+              <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-500 dark:text-red-400 shrink-0" />
               <span>{error}</span>
             </div>
             <button
               type="button"
               onClick={() => setError(null)}
-              className="text-xs text-red-400 hover:text-red-200 underline font-semibold cursor-pointer"
+              className="text-xs text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200 underline font-semibold cursor-pointer"
             >
               Fechar
             </button>
           </div>
         )}
 
-        {/* 1. TELA PRINCIPAL: APENAS CAMPO DE TEXTO + TECLADO (FOCO TOTAL) */}
+        {/* 1. TELA PRINCIPAL: CALCULADORA ESTILO PHOTOMATH COM FRAÇÃO VERTICAL & TECLADO */}
         {currentMenu === 'solver' && (
-          <div className="space-y-3 sm:space-y-4 animate-fade-in w-full max-w-full">
-            {/* Input Display Card */}
-            <div className="p-3 sm:p-4 md:p-5 rounded-2xl sm:rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-2.5 sm:space-y-3 w-full max-w-full box-border">
-              {/* Header inside Input Box */}
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <div className="flex items-center gap-1.5">
-                  <BookOpen className="w-3.5 h-3.5 text-indigo-400" />
-                  <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-                    Equação ou Exercício:
-                  </span>
-                </div>
+          <div className="flex-1 flex flex-col justify-between space-y-3 sm:space-y-4 animate-fade-in w-full max-w-full">
+            {/* Photomath Visual Display with Live Calculation & Alternative Forms */}
+            <PhotomathInputDisplay
+              input={inputProblem}
+              onInputChange={setInputProblem}
+              onClear={() => {
+                setInputProblem('');
+                if (textareaRef.current) {
+                  try {
+                    textareaRef.current.focus({ preventScroll: true });
+                  } catch {}
+                }
+              }}
+              onShowSolution={() => handleSolve({ openNotebookDirectly: true })}
+              isLoading={isLoading}
+              useNativeKeyboard={useNativeKeyboard}
+              onToggleNativeKeyboard={() => {
+                const next = !useNativeKeyboard;
+                setUseNativeKeyboard(next);
+                if (next) {
+                  setTimeout(() => textareaRef.current?.focus(), 50);
+                }
+              }}
+              textareaRef={textareaRef}
+            />
 
-                {/* Input Controls: Toggle Phone Keyboard & Clear */}
-                <div className="flex items-center gap-1.5">
-                  {/* Phone Native Keyboard Toggle */}
-                  <button
-                    type="button"
-                    id="btn-toggle-phone-keyboard"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => {
-                      const next = !useNativeKeyboard;
-                      setUseNativeKeyboard(next);
-                      if (next) {
-                        setTimeout(() => textareaRef.current?.focus(), 50);
-                      }
-                    }}
-                    className={`h-7 sm:h-8 px-2 sm:px-2.5 rounded-lg sm:rounded-xl text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer select-none ${
-                      useNativeKeyboard
-                        ? 'bg-amber-500 text-slate-950 font-extrabold shadow-sm'
-                        : 'bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700'
-                    }`}
-                    title="Ativar/Desativar teclado nativo do celular"
-                  >
-                    <Smartphone className="w-3.5 h-3.5" />
-                    <span>{useNativeKeyboard ? 'Teclado Celular: Ligado' : 'Teclado Celular'}</span>
-                  </button>
-
-                  {/* Quick button to view already calculated notebook solution without pushing layout */}
-                  {currentSolution && (
-                    <button
-                      type="button"
-                      id="btn-quick-view-notebook"
-                      onClick={() => setCurrentMenu('notebook_steps')}
-                      className="h-7 sm:h-8 px-2 sm:px-2.5 rounded-lg sm:rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/50 text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer select-none shrink-0"
-                      title="Ver resolução passo a passo no caderno"
-                    >
-                      <Pencil className="w-3 h-3 text-amber-400" />
-                      <span>Caderno ({currentSolution.steps?.length || 1})</span>
-                    </button>
-                  )}
-
-                  <button
-                    type="button"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => {
-                      setInputProblem('');
-                      if (textareaRef.current) {
-                        try {
-                          textareaRef.current.focus({ preventScroll: true });
-                        } catch {}
-                      }
-                    }}
-                    className="h-7 sm:h-8 px-2 rounded-lg sm:rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer select-none"
-                    title="Limpar campo"
-                  >
-                    <RotateCcw className="w-3 h-3" />
-                    <span className="hidden xs:inline">Limpar</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Textarea Input (inputMode="none" by default so mobile OS keyboard NEVER pops up automatically) */}
-              <div className="relative w-full max-w-full">
-                <textarea
-                  id="math-input"
-                  ref={textareaRef}
-                  value={inputProblem}
-                  onChange={(e) => setInputProblem(e.target.value)}
-                  placeholder="Digite sua equação ou use o teclado abaixo (ex: 2x^2 - 8x + 6 = 0)..."
-                  rows={2}
-                  inputMode={useNativeKeyboard ? 'text' : 'none'}
-                  autoComplete="off"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  className="w-full bg-slate-950 border border-slate-800 focus:border-indigo-500 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-sm sm:text-base font-mono text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all resize-none shadow-inner box-border max-w-full"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                      e.preventDefault();
-                      handleSolve();
-                    }
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* Scientific Math Keyboard with Sub-menus */}
-            <div className="w-full max-w-full">
+            {/* Photomath Scientific Keyboard (Extended to fill available space) */}
+            <div className="w-full max-w-full flex-1 flex flex-col">
               <MathKeyboard
                 input={inputProblem}
                 onInputChange={setInputProblem}
@@ -636,12 +675,27 @@ export default function App() {
                 isLoading={isLoading}
                 textareaRef={textareaRef}
                 useNativeKeyboard={useNativeKeyboard}
+                onToggleNativeKeyboard={() => setUseNativeKeyboard(!useNativeKeyboard)}
+                onOpenHistory={() => setCurrentMenu('history')}
               />
             </div>
           </div>
         )}
 
-        {/* 2. TELA DO PASSO A PASSO COM FONTE MANUSCRITA (CADERNO DE PAPEL REALISTA) */}
+        {/* 2. TELA PRINCIPAL DE RESOLUÇÃO INTERATIVA (ESTILO PHOTOMATH) */}
+        {currentMenu === 'resolution' && currentSolution && (
+          <div className="animate-fade-in w-full">
+            <PhotomathResolutionView
+              solution={currentSolution}
+              onBackToCalculator={() => setCurrentMenu('solver')}
+              onEditProblem={() => setCurrentMenu('solver')}
+              onAskClarification={handleAskClarification}
+              onSwitchToNotebook={() => setCurrentMenu('notebook_steps')}
+            />
+          </div>
+        )}
+
+        {/* 3. TELA DO PASSO A PASSO COM FONTE MANUSCRITA (CADERNO DE PAPEL REALISTA) */}
         {currentMenu === 'notebook_steps' && currentSolution && (
           <div className="animate-fade-in w-full">
             <HandwrittenNotebookDisplay
@@ -650,6 +704,7 @@ export default function App() {
               onAskClarification={handleAskClarification}
               onAlternativeMethod={handleAlternativeMethod}
               isLoadingAlternative={isLoadingAlternative}
+              onSwitchToPhotomath={() => setCurrentMenu('resolution')}
             />
           </div>
         )}
@@ -702,7 +757,30 @@ export default function App() {
           </div>
         )}
 
-        {/* 5. MENU: SUPER FERRAMENTAS OFFLINE */}
+        {/* 5. MENU: ESTÚDIO DE GEOMETRIA & SÓLIDOS 3D */}
+        {currentMenu === 'geometry' && (
+          <div className="space-y-4 animate-fade-in">
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setCurrentMenu('solver')}
+                className="text-xs text-indigo-400 hover:text-indigo-300 font-bold flex items-center gap-1 cursor-pointer"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Voltar à Calculadora</span>
+              </button>
+            </div>
+            <GeometryStudioView
+              onSolveInCalculator={(problemPrompt) => {
+                setInputProblem(problemPrompt);
+                setCurrentMenu('solver');
+                handleSolve({ problemOverride: problemPrompt, openNotebookDirectly: true });
+              }}
+            />
+          </div>
+        )}
+
+        {/* 6. MENU: SUPER FERRAMENTAS OFFLINE */}
         {currentMenu === 'tools' && (
           <div className="space-y-4 animate-fade-in">
             <div className="flex items-center justify-between">
@@ -767,6 +845,7 @@ export default function App() {
                 setCurrentMenu('notebook_steps');
               }}
               onClearHistory={handleClearHistory}
+              onDeleteItem={handleDeleteHistoryItem}
               favorites={favorites}
               onToggleFavorite={handleToggleFavorite}
             />
@@ -776,27 +855,32 @@ export default function App() {
 
       {/* SLIDE-OVER DRAWER / MODAL FOR ALL TOOLS (ESCONDIDO ATÉ CLICAR EM "MENU") */}
       {isMenuDrawerOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 dark:bg-black/75 backdrop-blur-sm animate-fade-in">
           <div
             className="fixed inset-0"
             onClick={() => setIsMenuDrawerOpen(false)}
           />
-          <div className="relative w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto z-10">
+          <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl rounded-3xl p-5 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto z-10 text-slate-900 dark:text-white">
             {/* Drawer Header */}
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30">
-                  <Menu className="w-5 h-5" />
+                <div className="w-9 h-9 rounded-xl bg-indigo-600/10 dark:bg-indigo-600/20 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/30 flex items-center justify-center">
+                  <span className="font-serif text-lg font-black">α</span>
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold text-white">Menu de Ferramentas</h3>
-                  <p className="text-xs text-slate-400">Selecione uma ferramenta ou retorne à calculadora</p>
+                  <h3 className="text-base font-extrabold text-slate-900 dark:text-white flex items-center gap-1.5">
+                    <span>Menu Alfa</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 font-semibold">
+                      v2.0
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Selecione uma ferramenta ou retorne à calculadora</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setIsMenuDrawerOpen(false)}
-                className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-all cursor-pointer"
+                className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -818,30 +902,30 @@ export default function App() {
                     className={`p-3.5 rounded-2xl text-left flex items-start gap-3 transition-all cursor-pointer border ${
                       isActive
                         ? 'bg-indigo-600 text-white border-indigo-400 shadow-md shadow-indigo-600/30'
-                        : 'bg-slate-950/80 hover:bg-slate-800/80 text-slate-300 border-slate-800'
+                        : 'bg-slate-50 hover:bg-slate-100 dark:bg-slate-950/80 dark:hover:bg-slate-800/80 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800'
                     }`}
                   >
                     <div
                       className={`p-2.5 rounded-xl shrink-0 ${
-                        isActive ? 'bg-white/20 text-white' : 'bg-slate-900 text-indigo-400 border border-slate-800'
+                        isActive ? 'bg-white/20 text-white' : 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 border border-slate-200 dark:border-slate-800'
                       }`}
                     >
                       <Icon className="w-5 h-5" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-bold text-white">{item.name}</span>
+                        <span className="text-sm font-bold">{item.name}</span>
                         {item.badge && (
                           <span
                             className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold ${
-                              isActive ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-300 border border-slate-700'
+                              isActive ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700'
                             }`}
                           >
                             {item.badge}
                           </span>
                         )}
                       </div>
-                      <p className={`text-xs mt-0.5 ${isActive ? 'text-indigo-100' : 'text-slate-400'}`}>
+                      <p className={`text-xs mt-0.5 ${isActive ? 'text-indigo-100' : 'text-slate-500 dark:text-slate-400'}`}>
                         {item.desc}
                       </p>
                     </div>
@@ -851,23 +935,37 @@ export default function App() {
             </div>
 
             {/* Quick Settings within Drawer */}
-            <div className="pt-3 border-t border-slate-800 flex items-center justify-between gap-2 flex-wrap">
-              <div className="flex items-center gap-1.5 text-xs text-slate-400 font-semibold">
-                <Settings2 className="w-4 h-4 text-indigo-400" />
-                <span>Configurações Rápidas:</span>
+            <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 font-semibold">
+                <Settings2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                <span>Configurações:</span>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
+                {/* Theme toggle in drawer */}
+                <button
+                  type="button"
+                  onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+                  className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-all ${
+                    theme === 'light'
+                      ? 'bg-amber-50 hover:bg-amber-100 border-amber-300 text-amber-900'
+                      : 'bg-slate-800 border-slate-700 text-amber-300'
+                  }`}
+                >
+                  {theme === 'light' ? <Sun className="w-3.5 h-3.5 text-amber-500" /> : <Moon className="w-3.5 h-3.5 text-indigo-400" />}
+                  <span>{theme === 'light' ? 'Tema Branco' : 'Tema Escuro'}</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={toggleFullscreen}
                   className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1 cursor-pointer transition-all ${
                     isFullscreen
-                      ? 'bg-purple-950/60 border-purple-500 text-purple-300'
-                      : 'bg-slate-950 border-slate-800 text-slate-300 hover:text-white'
+                      ? 'bg-purple-100 dark:bg-purple-950/60 border-purple-300 dark:border-purple-500 text-purple-800 dark:text-purple-300'
+                      : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-950 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'
                   }`}
                 >
                   {isFullscreen ? <Minimize className="w-3.5 h-3.5" /> : <Maximize className="w-3.5 h-3.5" />}
-                  <span>{isFullscreen ? 'Janela Normal' : 'Tela Cheia Total'}</span>
+                  <span>{isFullscreen ? 'Janela Normal' : 'Tela Cheia'}</span>
                 </button>
 
                 <button
@@ -875,21 +973,12 @@ export default function App() {
                   onClick={() => setIsOfflineMode(!isOfflineMode)}
                   className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1 cursor-pointer transition-all ${
                     isOfflineMode
-                      ? 'bg-emerald-950/60 border-emerald-500 text-emerald-300'
-                      : 'bg-slate-950 border-slate-800 text-slate-300'
+                      ? 'bg-emerald-100 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-500 text-emerald-800 dark:text-emerald-300'
+                      : 'bg-slate-100 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'
                   }`}
                 >
                   {isOfflineMode ? <WifiOff className="w-3.5 h-3.5" /> : <Wifi className="w-3.5 h-3.5" />}
                   <span>{isOfflineMode ? 'Offline (0ms)' : 'Online (IA)'}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setDetailLevel(detailLevel === 'detailed' ? 'concise' : 'detailed')}
-                  className="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-300 text-xs font-semibold flex items-center gap-1 cursor-pointer hover:text-white"
-                >
-                  <Zap className="w-3.5 h-3.5 text-amber-400" />
-                  <span>{detailLevel === 'detailed' ? 'Passos Detalhados' : 'Passos Diretos'}</span>
                 </button>
               </div>
             </div>

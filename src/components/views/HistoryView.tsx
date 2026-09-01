@@ -19,6 +19,7 @@ interface HistoryViewProps {
   history: MathSolution[];
   onSelectSolution: (solution: MathSolution) => void;
   onClearHistory: () => void;
+  onDeleteItem: (id: string) => void;
   favorites: string[];
   onToggleFavorite: (id: string) => void;
 }
@@ -27,6 +28,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
   history,
   onSelectSolution,
   onClearHistory,
+  onDeleteItem,
   favorites,
   onToggleFavorite,
 }) => {
@@ -172,18 +174,33 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                       </h4>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => onToggleFavorite(item.id)}
-                      className={`p-2 rounded-xl border transition-all cursor-pointer ${
-                        isFav
-                          ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                          : 'bg-slate-950 text-slate-500 border-slate-800 hover:text-white'
-                      }`}
-                      title={isFav ? 'Remover dos favoritos' : 'Favoritar exercício'}
-                    >
-                      <Star className={`w-4 h-4 ${isFav ? 'fill-amber-400' : ''}`} />
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => onToggleFavorite(item.id)}
+                        className={`p-2 rounded-xl border transition-all cursor-pointer ${
+                          isFav
+                            ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                            : 'bg-slate-950 text-slate-500 border-slate-800 hover:text-white'
+                        }`}
+                        title={isFav ? 'Remover dos favoritos' : 'Favoritar exercício'}
+                      >
+                        <Star className={`w-4 h-4 ${isFav ? 'fill-amber-400' : ''}`} />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm('Excluir este cálculo do histórico?')) {
+                            onDeleteItem(item.id);
+                          }
+                        }}
+                        className="p-2 rounded-xl border border-slate-800 bg-slate-950 text-slate-500 hover:text-rose-400 hover:border-rose-500/40 transition-all cursor-pointer"
+                        title="Excluir este cálculo do histórico"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
 
                   {/* Formula Preview Box */}

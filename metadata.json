@@ -1,6 +1,6 @@
 {
-  "name": "Calculadora Matemática Passo a Passo",
-  "description": "Calculadora matemática inteligente com resolução 100% passo a passo, scanner por câmera para fotos de exercícios e teclado completo com todas as fórmulas e símbolos.",
+  "name": "α Alfa",
+  "description": "Calculadora matemática inteligente Alfa com resolução passo a passo, scanner por câmera para fotos de exercícios, tema claro/escuro e teclado completo com todas as fórmulas e símbolos.",
   "requestFramePermissions": ["camera"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -19,6 +19,7 @@ interface HistoryDrawerProps {
   history: MathSolution[];
   onSelectSolution: (solution: MathSolution) => void;
   onClearHistory: () => void;
+  onDeleteItem: (id: string) => void;
   favorites: string[];
   onToggleFavorite: (id: string) => void;
 }
@@ -29,6 +30,7 @@ export const HistoryDrawer: React.FC<HistoryDrawerProps> = ({
   history,
   onSelectSolution,
   onClearHistory,
+  onDeleteItem,
   favorites,
   onToggleFavorite,
 }) => {
@@ -59,23 +61,23 @@ export const HistoryDrawer: React.FC<HistoryDrawerProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm animate-fade-in">
-      <div className="w-full max-w-md bg-slate-900 border-l border-slate-800 h-full flex flex-col shadow-2xl">
+    <div className="fixed inset-0 z-50 flex justify-end modal-backdrop-blur animate-fade-in">
+      <div className="w-full max-w-md bg-slate-900/95 border-l border-indigo-500/20 h-full flex flex-col shadow-2xl backdrop-blur-xl">
         {/* Header */}
-        <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-xl bg-indigo-600/20 text-indigo-400">
+        <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between bg-slate-950/70">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 shadow-inner">
               <History className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white">Histórico de Resoluções</h3>
+              <h3 className="text-base font-bold text-white tracking-tight">Histórico de Resoluções</h3>
               <p className="text-xs text-slate-400">Suas equações e fotos resolvidas</p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white"
+            className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition-all cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -150,20 +152,35 @@ export const HistoryDrawer: React.FC<HistoryDrawerProps> = ({
                         </span>
                       )}
                     </div>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onToggleFavorite(item.id);
-                      }}
-                      className="text-slate-400 hover:text-amber-400 transition-colors p-1"
-                    >
-                      {isFav ? (
-                        <BookmarkCheck className="w-4 h-4 text-amber-400" />
-                      ) : (
-                        <Bookmark className="w-4 h-4" />
-                      )}
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleFavorite(item.id);
+                        }}
+                        className="text-slate-400 hover:text-amber-400 transition-colors p-1"
+                        title={isFav ? 'Remover favorito' : 'Favoritar'}
+                      >
+                        {isFav ? (
+                          <BookmarkCheck className="w-4 h-4 text-amber-400" />
+                        ) : (
+                          <Bookmark className="w-4 h-4" />
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteItem(item.id);
+                        }}
+                        className="text-slate-500 hover:text-rose-400 transition-colors p-1"
+                        title="Excluir este cálculo do histórico"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
 
                   <h4 className="text-sm font-bold text-white group-hover:text-indigo-300 transition-colors line-clamp-1">

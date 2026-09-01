@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import html2canvas from 'html2canvas';
+import { toPng, toCanvas } from 'html-to-image';
 import jsPDF from 'jspdf';
 import { MathSolution, MathStep } from '../types';
 import { MathRenderer, MixedTextRenderer } from './MathRenderer';
@@ -16,6 +16,7 @@ import {
   Lightbulb,
   ShieldCheck,
   CheckCircle2,
+  AlertCircle,
   Share2,
   HelpCircle,
   Pencil,
@@ -23,6 +24,7 @@ import {
   Image as ImageIcon,
   Download,
   Loader2,
+  FileCode,
 } from 'lucide-react';
 
 interface HandwrittenNotebookDisplayProps {
@@ -31,6 +33,7 @@ interface HandwrittenNotebookDisplayProps {
   onAskClarification: (stepIndex: number, question: string) => void;
   onAlternativeMethod: () => void;
   isLoadingAlternative?: boolean;
+  onSwitchToPhotomath?: () => void;
 }
 
 export const HandwrittenNotebookDisplay: React.FC<HandwrittenNotebookDisplayProps> = ({
@@ -39,37 +42,110 @@ export const HandwrittenNotebookDisplay: React.FC<HandwrittenNotebookDisplayProp
   onAskClarification,
   onAlternativeMethod,
   isLoadingAlternative = false,
+  onSwitchToPhotomath,
 }) => {
   const [copied, setCopied] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [paperStyle, setPaperStyle] = useState<'grid' | 'lined' | 'dark'>('grid');
+  const [paperStyle, setPaperStyle] = useState<'grid' | 'lined' | 'dots' | 'dark'>('grid');
+  const [inkColor, setInkColor] = useState<'blue' | 'black' | 'pencil' | 'purple'>('blue');
   const [activeClarifyStep, setActiveClarifyStep] = useState<number | null>(null);
   const [clarifyQuestion, setClarifyQuestion] = useState('');
-  const [isExporting, setIsExporting] = useState<'png' | 'pdf' | null>(null);
+  const [isExporting, setIsExporting] = useState<'png' | 'pdf' | 'txt' | null>(null);
   const [exportSuccess, setExportSuccess] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
 
-  // Copy full solution text
-  const handleCopySolution = () => {
-    let text = `=== ${solution.problemTitle} ===\n\n`;
+  const getFullTextSolution = () => {
+    let text = `=== CADERNO DE MATEMÁTICA: ${solution.problemTitle.toUpperCase()} ===\n`;
     text += `Categoria: ${solution.problemType}\n`;
-    text += `Resumo: ${solution.summary}\n\n`;
+    text += `Enunciado: ${solution.originalInput}\n`;
+    text += `Objetivo: ${solution.summary}\n\n`;
 
-    text += `--- RESOLUÇÃO PASSO A PASSO ---\n`;
-    solution.steps.forEach((s) => {
-      text += `\nPasso ${s.stepNumber}: ${s.title}\n`;
+    if (solution.givenVariables && solution.givenVariables.length > 0) {
+      text += `--- DADOS IDENTIFICADOS ---\n`;
+      solution.givenVariables.forEach((v) => {
+        text += `• ${v.name}: ${v.value}${v.description ? ` (${v.description})` : ''}\n`;
+      });
+      text += `\n`;
+    }
+
+    if (solution.formulasUsed && solution.formulasUsed.length > 0) {
+      text += `--- FÓRMULAS & PROPRIEDADES ---\n`;
+      solution.formulasUsed.forEach((f) => {
+        text += `• ${f.name}: ${f.latex}${f.explanation ? ` - ${f.explanation}` : ''}\n`;
+      });
+      text += `\n`;
+    }
+
+    text += `--- RESOLUÇÃO PASSO A PASSO COMPLETA ---\n`;
+    solution.steps.forEach((s, idx) => {
+      text += `\n[Passo ${s.stepNumber || idx + 1}] ${s.title}\n`;
       text += `Explicação: ${s.explanation}\n`;
-      text += `Expressão: ${s.mathExpression}\n`;
-      if (s.tipOrRule) text += `Dica: ${s.tipOrRule}\n`;
+      if (s.mathExpression) {
+        text += `Cálculo: ${s.mathExpression}\n`;
+      }
+      if (s.tipOrRule) {
+        text += `Dica do Professor: ${s.tipOrRule}\n`;
+      }
+      if (s.subSteps && s.subSteps.length > 0) {
+        s.subSteps.forEach((sub, subIdx) => {
+          text += `  -> Subpasso ${subIdx + 1}: ${sub.explanation} [${sub.beforeLatex || ''} => ${sub.afterLatex || ''}]\n`;
+        });
+      }
     });
 
     text += `\n--- RESPOSTA FINAL ---\n`;
-    text += `Valor Exato: ${solution.finalAnswer.exact}\n`;
-    if (solution.finalAnswer.approximate) text += `Aproximação: ${solution.finalAnswer.approximate}\n`;
-    text += `Conclusão: ${solution.finalAnswer.explanation}\n`;
+    text += `Resultado Exato: ${solution.finalAnswer.exact}\n`;
+    if (solution.finalAnswer.approximate) {
+      text += `Valor Aproximado: ${solution.finalAnswer.approximate}\n`;
+    }
+    if (solution.finalAnswer.explanation) {
+      text += `Conclusão: ${solution.finalAnswer.explanation}\n`;
+    }
 
+    if (solution.verification) {
+      text += `\n--- PROVA REAL / VERIFICAÇÃO ---\n`;
+      text += `Método: ${solution.verification.method}\n`;
+      text += `Cálculo: ${solution.verification.mathExpression}\n`;
+      if (solution.verification.explanation) {
+        text += `Nota: ${solution.verification.explanation}\n`;
+      }
+    }
+
+    return text;
+  };
+
+  // Copy full solution text
+  const handleCopySolution = () => {
+    const text = getFullTextSolution();
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  // Download complete text file (.txt)
+  const handleExportText = () => {
+    try {
+      setIsExporting('txt');
+      const text = getFullTextSolution();
+      const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const safeTitle = (solution.problemTitle || 'resolucao_matematica')
+        .toLowerCase()
+        .replace(/[^a-z0-9_-]/g, '_')
+        .slice(0, 35);
+      link.download = `resolucao_${safeTitle}.txt`;
+      link.href = url;
+      link.click();
+      URL.revokeObjectURL(url);
+      setExportSuccess('Texto completo baixado com sucesso!');
+      setTimeout(() => setExportSuccess(null), 3000);
+    } catch (e) {
+      setExportError('Erro ao baixar arquivo de texto.');
+      setTimeout(() => setExportError(null), 4000);
+    } finally {
+      setIsExporting(null);
+    }
   };
 
   // Text-To-Speech reader in Portuguese
@@ -109,68 +185,144 @@ export const HandwrittenNotebookDisplay: React.FC<HandwrittenNotebookDisplayProp
     window.print();
   };
 
-  // Export to high-resolution PNG
+  // Export to complete high-resolution PNG
   const handleExportPNG = async () => {
     const element = document.getElementById('notebook-sheet');
     if (!element) return;
     setIsExporting('png');
+    setExportError(null);
     try {
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
+      const fullWidth = Math.max(element.scrollWidth, element.offsetWidth, 800);
+      const fullHeight = Math.max(element.scrollHeight, element.offsetHeight);
+
+      const dataUrl = await toPng(element, {
+        pixelRatio: 2,
+        width: fullWidth,
+        height: fullHeight,
+        canvasWidth: fullWidth * 2,
+        canvasHeight: fullHeight * 2,
         backgroundColor: paperStyle === 'dark' ? '#0b1120' : '#faf8f5',
+        skipFonts: true,
+        fontEmbedCSS: '',
+        cacheBust: true,
+        style: {
+          transform: 'none',
+          maxHeight: 'none',
+          height: `${fullHeight}px`,
+          width: `${fullWidth}px`,
+          overflow: 'visible',
+          margin: '0',
+        },
+        filter: (node) => {
+          if (node instanceof HTMLElement) {
+            return (
+              node.getAttribute('data-export-ignore') !== 'true' &&
+              node.getAttribute('data-html2canvas-ignore') !== 'true'
+            );
+          }
+          return true;
+        },
       });
-      const imgData = canvas.toDataURL('image/png');
       const link = document.createElement('a');
       const safeTitle = (solution.problemTitle || 'resolucao_matematica')
         .toLowerCase()
         .replace(/[^a-z0-9_-]/g, '_')
         .slice(0, 35);
       link.download = `resolucao_${safeTitle}.png`;
-      link.href = imgData;
+      link.href = dataUrl;
       link.click();
-      setExportSuccess('PNG baixado com sucesso!');
+      setExportSuccess('PNG completo baixado com sucesso!');
       setTimeout(() => setExportSuccess(null), 3000);
     } catch (error) {
       console.error('Erro ao exportar PNG:', error);
-      alert('Não foi possível gerar a imagem PNG. Tente novamente.');
+      setExportError('Não foi possível exportar a imagem PNG. Tente novamente.');
+      setTimeout(() => setExportError(null), 4000);
     } finally {
       setIsExporting(null);
     }
   };
 
-  // Export to multi-page PDF
+  // Export to complete multi-page PDF with precise page-by-page slicing
   const handleExportPDF = async () => {
     const element = document.getElementById('notebook-sheet');
     if (!element) return;
     setIsExporting('pdf');
+    setExportError(null);
     try {
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
+      const fullWidth = Math.max(element.scrollWidth, element.offsetWidth, 800);
+      const fullHeight = Math.max(element.scrollHeight, element.offsetHeight);
+
+      const fullCanvas = await toCanvas(element, {
+        pixelRatio: 2,
+        width: fullWidth,
+        height: fullHeight,
+        canvasWidth: fullWidth * 2,
+        canvasHeight: fullHeight * 2,
         backgroundColor: paperStyle === 'dark' ? '#0b1120' : '#faf8f5',
+        skipFonts: true,
+        fontEmbedCSS: '',
+        cacheBust: true,
+        style: {
+          transform: 'none',
+          maxHeight: 'none',
+          height: `${fullHeight}px`,
+          width: `${fullWidth}px`,
+          overflow: 'visible',
+          margin: '0',
+        },
+        filter: (node) => {
+          if (node instanceof HTMLElement) {
+            return (
+              node.getAttribute('data-export-ignore') !== 'true' &&
+              node.getAttribute('data-html2canvas-ignore') !== 'true'
+            );
+          }
+          return true;
+        },
       });
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
 
-      const imgWidth = pdfWidth;
-      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+      // Determine canvas slice height corresponding to one A4 page ratio
+      const pageCanvasHeight = (fullCanvas.width * pdfHeight) / pdfWidth;
+      const totalPages = Math.ceil(fullCanvas.height / pageCanvasHeight);
 
-      let heightLeft = imgHeight;
-      let position = 0;
+      for (let pageIdx = 0; pageIdx < totalPages; pageIdx++) {
+        if (pageIdx > 0) {
+          pdf.addPage();
+        }
 
-      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
-      heightLeft -= pdfHeight;
+        const currentSliceHeight = Math.min(
+          pageCanvasHeight,
+          fullCanvas.height - pageIdx * pageCanvasHeight
+        );
 
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
-        heightLeft -= pdfHeight;
+        const pageCanvas = document.createElement('canvas');
+        pageCanvas.width = fullCanvas.width;
+        pageCanvas.height = pageCanvasHeight;
+
+        const ctx = pageCanvas.getContext('2d');
+        if (ctx) {
+          ctx.fillStyle = paperStyle === 'dark' ? '#0b1120' : '#faf8f5';
+          ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+
+          ctx.drawImage(
+            fullCanvas,
+            0,
+            pageIdx * pageCanvasHeight,
+            fullCanvas.width,
+            currentSliceHeight,
+            0,
+            0,
+            fullCanvas.width,
+            currentSliceHeight
+          );
+
+          const imgData = pageCanvas.toDataURL('image/jpeg', 0.95);
+          pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
+        }
       }
 
       const safeTitle = (solution.problemTitle || 'resolucao_matematica')
@@ -178,11 +330,12 @@ export const HandwrittenNotebookDisplay: React.FC<HandwrittenNotebookDisplayProp
         .replace(/[^a-z0-9_-]/g, '_')
         .slice(0, 35);
       pdf.save(`resolucao_${safeTitle}.pdf`);
-      setExportSuccess('PDF gerado e baixado!');
+      setExportSuccess(`PDF completo gerado (${totalPages} páginas)!`);
       setTimeout(() => setExportSuccess(null), 3000);
     } catch (error) {
       console.error('Erro ao exportar PDF:', error);
-      alert('Não foi possível gerar o arquivo PDF. Tente novamente.');
+      setExportError('Não foi possível gerar o arquivo PDF. Tente novamente.');
+      setTimeout(() => setExportError(null), 4000);
     } finally {
       setIsExporting(null);
     }
@@ -197,10 +350,21 @@ export const HandwrittenNotebookDisplay: React.FC<HandwrittenNotebookDisplayProp
 
   const paperBgClass =
     paperStyle === 'grid'
-      ? 'notebook-paper-grid text-slate-900 border-amber-200/80 shadow-2xl'
+      ? 'notebook-paper-grid text-slate-900 border-amber-200/90 shadow-2xl pl-8 sm:pl-12'
       : paperStyle === 'lined'
-      ? 'notebook-paper-lined text-slate-900 border-red-200/80 shadow-2xl pl-10 sm:pl-16'
-      : 'notebook-paper-dark text-slate-100 border-slate-800 shadow-2xl';
+      ? 'notebook-paper-lined text-slate-900 border-red-200/90 shadow-2xl pl-12 sm:pl-18'
+      : paperStyle === 'dots'
+      ? 'notebook-paper-dots text-slate-900 border-amber-200/90 shadow-2xl pl-8 sm:pl-12'
+      : 'notebook-paper-dark text-slate-100 border-slate-800 shadow-2xl pl-8 sm:pl-12';
+
+  const inkClass =
+    inkColor === 'blue'
+      ? 'ink-blue'
+      : inkColor === 'black'
+      ? 'ink-black'
+      : inkColor === 'pencil'
+      ? 'ink-pencil'
+      : 'ink-purple';
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-4 animate-fade-in pb-28 sm:pb-36 overflow-y-auto">
@@ -212,21 +376,41 @@ export const HandwrittenNotebookDisplay: React.FC<HandwrittenNotebookDisplayProp
         </div>
       )}
 
+      {exportError && (
+        <div className="fixed bottom-6 right-6 z-50 bg-rose-600 text-white px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2 text-xs sm:text-sm font-bold animate-fade-in border border-rose-400">
+          <AlertCircle className="w-4 h-4" />
+          <span>{exportError}</span>
+        </div>
+      )}
+
       {/* Top Sticky Navigation & Paper Controls Bar */}
       <div className="sticky top-14 sm:top-16 z-30 flex items-center justify-between gap-2 flex-wrap bg-slate-900/95 border border-slate-800 p-2.5 sm:p-3 rounded-2xl shadow-xl backdrop-blur-md">
-        <button
-          type="button"
-          id="btn-back-to-calc"
-          onClick={onBackToCalculator}
-          className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-all shadow-md shadow-indigo-600/30 cursor-pointer select-none shrink-0"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Voltar à Calculadora</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            id="btn-back-to-calc"
+            onClick={onBackToCalculator}
+            className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-all border border-slate-700 cursor-pointer select-none shrink-0"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Voltar</span>
+          </button>
 
-        {/* Paper Style Selector & Action Tools */}
+          {onSwitchToPhotomath && (
+            <button
+              type="button"
+              onClick={onSwitchToPhotomath}
+              className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 active:scale-95 text-white text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-all shadow-md shadow-rose-600/30 cursor-pointer select-none shrink-0"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>Passo a Passo</span>
+            </button>
+          )}
+        </div>
+
+        {/* Paper & Ink Customization Controls */}
         <div className="flex items-center gap-1.5 flex-wrap">
-          {/* Paper Type */}
+          {/* Paper Type Selector */}
           <div className="flex items-center bg-slate-950 p-0.5 rounded-xl border border-slate-800">
             <button
               type="button"
@@ -234,7 +418,7 @@ export const HandwrittenNotebookDisplay: React.FC<HandwrittenNotebookDisplayProp
               className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
                 paperStyle === 'grid' ? 'bg-amber-100 text-slate-900 shadow-sm' : 'text-slate-400 hover:text-white'
               }`}
-              title="Caderno Quadriculado"
+              title="Caderno Quadriculado Escolar"
             >
               Quadriculado
             </button>
@@ -244,9 +428,19 @@ export const HandwrittenNotebookDisplay: React.FC<HandwrittenNotebookDisplayProp
               className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
                 paperStyle === 'lined' ? 'bg-amber-100 text-slate-900 shadow-sm' : 'text-slate-400 hover:text-white'
               }`}
-              title="Caderno Pautado com Margem"
+              title="Caderno Pautado com Margem Vermelha"
             >
               Pautado
+            </button>
+            <button
+              type="button"
+              onClick={() => setPaperStyle('dots')}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                paperStyle === 'dots' ? 'bg-amber-100 text-slate-900 shadow-sm' : 'text-slate-400 hover:text-white'
+              }`}
+              title="Folha Pontilhada / Bullet Journal"
+            >
+              Pontilhado
             </button>
             <button
               type="button"
@@ -254,9 +448,57 @@ export const HandwrittenNotebookDisplay: React.FC<HandwrittenNotebookDisplayProp
               className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
                 paperStyle === 'dark' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
               }`}
-              title="Caderno Escuro"
+              title="Lousa Negra / Dark Mode"
             >
               Escuro
+            </button>
+          </div>
+
+          {/* Ink Color Selector */}
+          <div className="flex items-center bg-slate-950 p-0.5 rounded-xl border border-slate-800">
+            <button
+              type="button"
+              onClick={() => setInkColor('blue')}
+              className={`px-2 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                inkColor === 'blue' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-blue-400'
+              }`}
+              title="Caneta Azul Escolar"
+            >
+              <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />
+              <span className="hidden md:inline">Azul</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setInkColor('black')}
+              className={`px-2 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                inkColor === 'black' ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'
+              }`}
+              title="Caneta Tinteiro Preta"
+            >
+              <span className="w-2 h-2 rounded-full bg-slate-300 inline-block" />
+              <span className="hidden md:inline">Preta</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setInkColor('pencil')}
+              className={`px-2 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                inkColor === 'pencil' ? 'bg-slate-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'
+              }`}
+              title="Lápis Grafite 2B"
+            >
+              <span className="w-2 h-2 rounded-full bg-slate-400 inline-block" />
+              <span className="hidden md:inline">Grafite</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setInkColor('purple')}
+              className={`px-2 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                inkColor === 'purple' ? 'bg-purple-600 text-white shadow-sm' : 'text-slate-400 hover:text-purple-400'
+              }`}
+              title="Caneta Roxa do Professor"
+            >
+              <span className="w-2 h-2 rounded-full bg-purple-400 inline-block" />
+              <span className="hidden md:inline">Roxa</span>
             </button>
           </div>
 
@@ -267,7 +509,7 @@ export const HandwrittenNotebookDisplay: React.FC<HandwrittenNotebookDisplayProp
             onClick={handleExportPNG}
             disabled={Boolean(isExporting)}
             className="h-8 sm:h-9 px-2.5 sm:px-3 rounded-xl bg-emerald-950/70 hover:bg-emerald-900/80 text-emerald-300 border border-emerald-500/50 text-xs font-bold flex items-center gap-1 transition-all cursor-pointer select-none active:scale-95 disabled:opacity-50"
-            title="Exportar resolução como imagem PNG de alta resolução"
+            title="Exportar resolução completa como imagem PNG de alta resolução"
           >
             {isExporting === 'png' ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -284,7 +526,7 @@ export const HandwrittenNotebookDisplay: React.FC<HandwrittenNotebookDisplayProp
             onClick={handleExportPDF}
             disabled={Boolean(isExporting)}
             className="h-8 sm:h-9 px-2.5 sm:px-3 rounded-xl bg-rose-950/70 hover:bg-rose-900/80 text-rose-300 border border-rose-500/50 text-xs font-bold flex items-center gap-1 transition-all cursor-pointer select-none active:scale-95 disabled:opacity-50"
-            title="Baixar resolução em documento PDF formatado"
+            title="Baixar resolução completa em documento PDF de múltiplas páginas"
           >
             {isExporting === 'pdf' ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -292,6 +534,19 @@ export const HandwrittenNotebookDisplay: React.FC<HandwrittenNotebookDisplayProp
               <FileText className="w-3.5 h-3.5 text-rose-400" />
             )}
             <span>PDF</span>
+          </button>
+
+          {/* Export Text / Markdown */}
+          <button
+            type="button"
+            id="btn-export-text"
+            onClick={handleExportText}
+            disabled={Boolean(isExporting)}
+            className="h-8 sm:h-9 px-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs font-bold flex items-center gap-1 transition-all cursor-pointer select-none"
+            title="Baixar resolução completa em arquivo de texto formatado (.txt)"
+          >
+            <FileCode className="w-3.5 h-3.5 text-indigo-400" />
+            <span className="hidden md:inline">TXT</span>
           </button>
 
           {/* Print */}
@@ -325,7 +580,7 @@ export const HandwrittenNotebookDisplay: React.FC<HandwrittenNotebookDisplayProp
             type="button"
             onClick={handleCopySolution}
             className="h-8 sm:h-9 px-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs font-medium flex items-center gap-1 transition-all cursor-pointer"
-            title="Copiar texto da resolução"
+            title="Copiar texto completo da resolução"
           >
             {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
             <span className="hidden sm:inline">{copied ? 'Copiado' : 'Copiar'}</span>
@@ -333,24 +588,33 @@ export const HandwrittenNotebookDisplay: React.FC<HandwrittenNotebookDisplayProp
         </div>
       </div>
 
-
       {/* REALISTIC HANDWRITTEN NOTEBOOK PAPER SHEET */}
       <div
         id="notebook-sheet"
-        className={`w-full rounded-2xl sm:rounded-3xl p-5 sm:p-8 md:p-10 border transition-all relative overflow-hidden ${paperBgClass}`}
+        className={`w-full rounded-2xl sm:rounded-3xl p-5 sm:p-8 md:p-10 border transition-all relative ${paperBgClass} ${inkClass}`}
       >
-        {/* Notebook Spiral / Ring Binder visual header decoration */}
+        {/* Spiral Binder Rings on Left Border */}
+        <div className="absolute left-2 top-6 bottom-6 flex flex-col justify-around pointer-events-none select-none">
+          {[...Array(14)].map((_, ringIdx) => (
+            <div
+              key={ringIdx}
+              className="w-3.5 h-5 rounded-full bg-gradient-to-r from-slate-400 via-slate-200 to-slate-500 border border-slate-500 shadow-md transform -rotate-12 spiral-binder-ring"
+            />
+          ))}
+        </div>
+
+        {/* Notebook Top Header */}
         <div className="flex items-center justify-between border-b-2 border-slate-300/80 dark:border-slate-700/80 pb-4 mb-6">
           <div className="flex items-center gap-2">
             <Pencil className="w-5 h-5 text-indigo-600 dark:text-indigo-400 rotate-45" />
             <span className="font-handwriting text-2xl sm:text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-100">
-              Caderno de Matemática — Resolução Completa
+              Caderno de Matemática — Resolução Manuscrita
             </span>
           </div>
 
           <div className="flex items-center gap-2 text-right">
             <span className="font-handwriting text-lg sm:text-xl text-slate-500 dark:text-slate-400">
-              {solution.problemType || 'Álgebra / Cálculo'}
+              {solution.problemType || 'Álgebra & Cálculo'}
             </span>
           </div>
         </div>
@@ -359,7 +623,7 @@ export const HandwrittenNotebookDisplay: React.FC<HandwrittenNotebookDisplayProp
         <div className="mb-6 pb-4 border-b border-dashed border-slate-300 dark:border-slate-700">
           <div className="flex items-center gap-2 mb-1">
             <span className="font-handwriting text-xl sm:text-2xl font-bold text-indigo-700 dark:text-indigo-300">
-              Exercício / Equação:
+              Exercício / Equação Proposta:
             </span>
           </div>
           
@@ -378,9 +642,9 @@ export const HandwrittenNotebookDisplay: React.FC<HandwrittenNotebookDisplayProp
         {(solution.givenVariables?.length || solution.formulasUsed?.length) ? (
           <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
             {solution.givenVariables && solution.givenVariables.length > 0 && (
-              <div className="p-3.5 rounded-xl bg-amber-50/70 dark:bg-slate-900/60 border border-amber-200/80 dark:border-slate-800">
+              <div className="p-3.5 rounded-xl bg-amber-50/80 dark:bg-slate-900/60 border border-amber-200/80 dark:border-slate-800 shadow-sm">
                 <span className="font-handwriting text-xl font-bold text-amber-900 dark:text-amber-300 block mb-1">
-                  Dados identificados:
+                  📌 Dados identificados:
                 </span>
                 <ul className="space-y-1">
                   {solution.givenVariables.map((v, i) => (
@@ -396,9 +660,9 @@ export const HandwrittenNotebookDisplay: React.FC<HandwrittenNotebookDisplayProp
             )}
 
             {solution.formulasUsed && solution.formulasUsed.length > 0 && (
-              <div className="p-3.5 rounded-xl bg-indigo-50/70 dark:bg-slate-900/60 border border-indigo-200/80 dark:border-slate-800">
+              <div className="p-3.5 rounded-xl bg-indigo-50/80 dark:bg-slate-900/60 border border-indigo-200/80 dark:border-slate-800 shadow-sm">
                 <span className="font-handwriting text-xl font-bold text-indigo-900 dark:text-indigo-300 block mb-1">
-                  Fórmulas utilizadas:
+                  📐 Fórmulas & Propriedades:
                 </span>
                 <div className="space-y-1.5">
                   {solution.formulasUsed.map((f, i) => (
@@ -430,57 +694,93 @@ export const HandwrittenNotebookDisplay: React.FC<HandwrittenNotebookDisplayProp
             return (
               <div
                 key={index}
-                className="relative pl-3 sm:pl-4 border-l-4 border-indigo-500/60 dark:border-indigo-400/60 space-y-2 py-1"
+                className="relative pl-3 sm:pl-4 border-l-4 border-indigo-500/60 dark:border-indigo-400/60 space-y-2.5 py-1.5 transition-all"
               >
-                {/* Step Header */}
-                <div className="flex items-baseline gap-2 flex-wrap">
-                  <span className="font-handwriting text-2xl sm:text-3xl font-extrabold text-indigo-900 dark:text-indigo-300">
-                    Passo {step.stepNumber || index + 1}:
+                {/* Step Header with Circled Step Number */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="w-8 h-8 rounded-full bg-indigo-600 text-white font-handwriting text-xl font-bold flex items-center justify-center shadow-sm shrink-0">
+                    {step.stepNumber || index + 1}
                   </span>
-                  <span className="font-handwriting text-xl sm:text-2xl font-bold text-slate-800 dark:text-slate-100">
+                  <span className="font-handwriting text-2xl sm:text-3xl font-extrabold text-indigo-900 dark:text-indigo-200">
                     {step.title}
                   </span>
                 </div>
 
                 {/* Pedagogical Explanation in Handwriting Font */}
-                <div className="font-handwriting text-xl sm:text-2xl text-slate-800 dark:text-slate-200 leading-relaxed">
+                <div className="font-handwriting text-xl sm:text-2xl text-slate-800 dark:text-slate-200 leading-relaxed pl-1">
                   <MixedTextRenderer text={step.explanation} />
                 </div>
 
                 {/* Math Calculation Card */}
                 {step.mathExpression && (
-                  <div className="my-2.5 p-3 sm:p-4 rounded-xl bg-white/90 dark:bg-slate-950/90 border border-slate-300 dark:border-slate-800 shadow-sm">
-                    <div className="text-center text-base sm:text-lg font-bold text-slate-900 dark:text-indigo-200 overflow-x-auto">
+                  <div className="my-2.5 p-3.5 sm:p-4 rounded-xl bg-white/95 dark:bg-slate-950/95 border border-slate-300 dark:border-slate-800 shadow-sm">
+                    <div className="text-center text-lg sm:text-xl font-bold text-slate-900 dark:text-indigo-200 overflow-x-auto">
                       <MathRenderer math={step.mathExpression} block />
                     </div>
                   </div>
                 )}
 
-                {/* Teacher's handwritten tip note */}
+                {/* Sub-steps / Intermediate Transformations (if present) */}
+                {step.subSteps && step.subSteps.length > 0 && (
+                  <div className="my-2 pl-3 border-l-2 border-dashed border-indigo-300 dark:border-indigo-700/60 space-y-2">
+                    {step.subSteps.map((sub, subIdx) => (
+                      <div
+                        key={subIdx}
+                        className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800"
+                      >
+                        <div className="font-handwriting text-lg font-bold text-slate-700 dark:text-slate-300 mb-1">
+                          ↳ Subpasso {subIdx + 1}: <MixedTextRenderer text={sub.explanation} inline />
+                        </div>
+                        {(sub.beforeLatex || sub.afterLatex) && (
+                          <div className="flex items-center gap-2 text-sm font-mono flex-wrap bg-white dark:bg-slate-950 p-2 rounded-lg border border-slate-200 dark:border-slate-800">
+                            {sub.beforeLatex && (
+                              <div className="px-2 py-0.5 bg-rose-50 dark:bg-rose-950/40 rounded border border-rose-200 dark:border-rose-800/50">
+                                <MathRenderer math={sub.beforeLatex} inline />
+                              </div>
+                            )}
+                            <span className="text-slate-400 font-bold">➔</span>
+                            {sub.afterLatex && (
+                              <div className="px-2 py-0.5 bg-emerald-50 dark:bg-emerald-950/40 rounded border border-emerald-200 dark:border-emerald-800/50">
+                                <MathRenderer math={sub.afterLatex} inline />
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {sub.tip && (
+                          <div className="font-handwriting text-base text-amber-700 dark:text-amber-300 mt-1">
+                            💡 {sub.tip}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Teacher's handwritten Post-It Sticky Note */}
                 {step.tipOrRule && (
-                  <div className="my-2 p-2.5 sm:p-3 rounded-xl bg-amber-100/80 dark:bg-amber-950/30 border border-amber-300/80 dark:border-amber-700/40 text-amber-900 dark:text-amber-200 flex items-start gap-2">
-                    <Lightbulb className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                  <div className="my-2 p-3 sm:p-3.5 rounded-xl sticky-note-yellow border border-amber-300/80 text-amber-950 flex items-start gap-2 shadow-md max-w-xl">
+                    <Lightbulb className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
                     <div className="font-handwriting text-lg sm:text-xl leading-snug">
-                      <span className="font-bold mr-1">Observação do Professor:</span>
+                      <span className="font-bold mr-1">Dica do Professor:</span>
                       <span>{step.tipOrRule}</span>
                     </div>
                   </div>
                 )}
 
-                {/* Tutor Question Button */}
-                <div className="pt-1">
+                {/* Tutor Clarification Button & Input */}
+                <div className="pt-1" data-export-ignore="true">
                   <button
                     type="button"
                     onClick={() => setActiveClarifyStep(isClarifying ? null : index)}
-                    className="font-handwriting text-lg font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-200 flex items-center gap-1 cursor-pointer"
+                    className="font-handwriting text-lg font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-200 flex items-center gap-1.5 cursor-pointer select-none"
                   >
                     <span>💬 Ficou com dúvida neste Passo {index + 1}? Clique para tirar dúvida</span>
                   </button>
 
                   {isClarifying && (
-                    <div className="mt-2 p-3 rounded-xl bg-white dark:bg-slate-900 border border-indigo-400 space-y-2">
+                    <div className="mt-2.5 p-3.5 rounded-2xl bg-white dark:bg-slate-900 border-2 border-indigo-500 shadow-xl space-y-2.5 animate-fade-in">
                       <label className="font-handwriting text-lg font-bold text-indigo-900 dark:text-indigo-300 block">
-                        Qual é a sua dúvida no Passo {index + 1}?
+                        O que você gostaria que o professor explicasse sobre o Passo {index + 1}?
                       </label>
                       <div className="flex items-center gap-2">
                         <input
@@ -488,7 +788,7 @@ export const HandwrittenNotebookDisplay: React.FC<HandwrittenNotebookDisplayProp
                           value={clarifyQuestion}
                           onChange={(e) => setClarifyQuestion(e.target.value)}
                           placeholder="Ex: De onde veio este número? Por que trocou o sinal?"
-                          className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-white"
+                          className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') submitClarification(index);
                           }}
@@ -497,7 +797,7 @@ export const HandwrittenNotebookDisplay: React.FC<HandwrittenNotebookDisplayProp
                           type="button"
                           onClick={() => submitClarification(index)}
                           disabled={!clarifyQuestion.trim()}
-                          className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white font-bold text-xs shadow cursor-pointer disabled:opacity-50"
+                          className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs sm:text-sm shadow-md shadow-indigo-600/30 cursor-pointer disabled:opacity-50 transition-all active:scale-95"
                         >
                           Explicar
                         </button>
@@ -511,16 +811,16 @@ export const HandwrittenNotebookDisplay: React.FC<HandwrittenNotebookDisplayProp
         </div>
 
         {/* 4. FINAL ANSWER (RESPOSTA FINAL COM DESTAQUE EM MARCA-TEXTO) */}
-        <div className="mt-8 p-5 sm:p-6 rounded-2xl bg-white/90 dark:bg-slate-900/90 border-2 border-emerald-500 shadow-lg relative overflow-hidden">
-          <div className="flex items-center gap-2 mb-2">
-            <CheckCircle2 className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+        <div className="mt-8 p-5 sm:p-7 rounded-2xl bg-white/95 dark:bg-slate-900/95 border-2 border-emerald-500 shadow-xl relative overflow-hidden">
+          <div className="flex items-center gap-2.5 mb-2">
+            <CheckCircle2 className="w-7 h-7 text-emerald-600 dark:text-emerald-400" />
             <span className="font-handwriting text-2xl sm:text-3xl font-black text-emerald-700 dark:text-emerald-400 tracking-wide">
               Resposta Final / Conclusão:
             </span>
           </div>
 
           {/* Exact Math Expression with Highlighter effect */}
-          <div className="my-3 py-3 px-4 rounded-xl bg-emerald-50/70 dark:bg-slate-950 border border-emerald-300 dark:border-emerald-700 text-center">
+          <div className="my-3.5 py-3.5 px-4 rounded-xl bg-emerald-50/80 dark:bg-slate-950 border border-emerald-300 dark:border-emerald-700 text-center">
             <div className="text-xl sm:text-2xl md:text-3xl font-extrabold text-emerald-950 dark:text-emerald-200 overflow-x-auto">
               <MathRenderer math={solution.finalAnswer.exact} block />
             </div>
@@ -531,56 +831,102 @@ export const HandwrittenNotebookDisplay: React.FC<HandwrittenNotebookDisplayProp
             )}
           </div>
 
-          <div className="font-handwriting text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-100 mt-2 leading-relaxed">
-            <span className="marker-yellow">{solution.finalAnswer.explanation}</span>
-          </div>
-        </div>
-
-        {/* 5. PROOF / VERIFICATION (PROVA REAL) */}
-        {solution.verification && (
-          <div className="mt-6 p-4 rounded-xl bg-slate-100/80 dark:bg-slate-900/80 border border-slate-300 dark:border-slate-800">
-            <div className="flex items-center gap-2 mb-1">
-              <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-              <span className="font-handwriting text-xl font-bold text-slate-800 dark:text-slate-200">
-                Prova Real & Verificação:
+          {solution.finalAnswer.explanation && (
+            <div className="font-handwriting text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-100 mt-2 leading-relaxed">
+              <span className="marker-yellow inline-block">
+                <MixedTextRenderer text={solution.finalAnswer.explanation} inline />
               </span>
             </div>
-            <p className="font-handwriting text-lg text-slate-600 dark:text-slate-400">
-              Método: {solution.verification.method}
+          )}
+        </div>
+
+        {/* 5. PROOF / VERIFICATION (PROVA REAL COM CARIMBO MANUSCRITO) */}
+        {solution.verification && (
+          <div className="mt-6 p-4 sm:p-5 rounded-2xl bg-emerald-50/50 dark:bg-slate-900/80 border-2 border-dashed border-emerald-500/80 shadow-md">
+            <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                <span className="font-handwriting text-2xl font-bold text-emerald-900 dark:text-emerald-300">
+                  Prova Real & Verificação Matemática:
+                </span>
+              </div>
+              <span className="font-handwriting text-lg font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/80 px-2.5 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-700">
+                ✓ 100% Verificado
+              </span>
+            </div>
+
+            <p className="font-handwriting text-xl text-slate-700 dark:text-slate-300">
+              Método de verificação: <span className="font-bold">{solution.verification.method}</span>
             </p>
-            <div className="my-2 p-2 bg-white dark:bg-slate-950 rounded-lg border border-slate-200 dark:border-slate-800 text-center">
+
+            <div className="my-2.5 p-3 bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 text-center shadow-sm">
               <MathRenderer math={solution.verification.mathExpression} block />
             </div>
+
             {solution.verification.explanation && (
-              <p className="font-handwriting text-lg text-slate-700 dark:text-slate-300">
-                {solution.verification.explanation}
-              </p>
+              <div className="font-handwriting text-xl text-emerald-900 dark:text-emerald-200 leading-relaxed mt-2">
+                <MixedTextRenderer text={solution.verification.explanation} />
+              </div>
             )}
           </div>
         )}
 
-        {/* 6. BOTTOM ACTION BUTTON TO RETURN & EXPORT */}
+        {/* 6. SIMILAR PRACTICE PROBLEMS (EXERCÍCIOS DE FIXAÇÃO SE HOUVER) */}
+        {solution.similarPracticeProblems && solution.similarPracticeProblems.length > 0 && (
+          <div className="mt-6 p-4 sm:p-5 rounded-2xl bg-indigo-50/50 dark:bg-slate-900/70 border border-indigo-200 dark:border-slate-800 shadow-sm">
+            <div className="flex items-center gap-2 mb-2">
+              <BookOpen className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+              <span className="font-handwriting text-2xl font-bold text-indigo-900 dark:text-indigo-300">
+                Exercícios Recomendados para Fixação:
+              </span>
+            </div>
+            <div className="space-y-2 mt-2">
+              {solution.similarPracticeProblems.map((p, pIdx) => (
+                <div
+                  key={p.id || pIdx}
+                  className="p-3 rounded-xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 flex-wrap"
+                >
+                  <div>
+                    <span className="font-handwriting text-lg font-bold text-slate-800 dark:text-slate-200">
+                      {pIdx + 1}) {p.problem}
+                    </span>
+                    {p.latex && (
+                      <div className="text-sm font-mono text-indigo-600 dark:text-indigo-400 mt-0.5">
+                        <MathRenderer math={p.latex} inline />
+                      </div>
+                    )}
+                  </div>
+                  <span className="font-handwriting text-base font-bold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800">
+                    Gabarito: {p.answer}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 7. BOTTOM EXPORT BAR */}
         <div
+          data-export-ignore="true"
           data-html2canvas-ignore="true"
           className="mt-8 pt-4 border-t border-slate-300 dark:border-slate-700 flex flex-col gap-4"
         >
-          {/* Quick Export Cards */}
-          <div className="p-3.5 sm:p-4 rounded-2xl bg-white/70 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-white/80 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm">
             <div className="flex items-center gap-2.5">
               <div className="p-2 rounded-xl bg-indigo-500/20 text-indigo-400">
                 <Download className="w-5 h-5" />
               </div>
               <div>
                 <span className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100 block">
-                  Exportar & Guardar Resolução
+                  Exportar Caderno Completo
                 </span>
                 <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Salve como imagem de alta resolução (PNG) ou documento pronto para impressão (PDF)
+                  Baixe todos os passos, fórmulas, explicações e gabarito em PNG, PDF ou TXT
                 </span>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
               <button
                 type="button"
                 onClick={handleExportPNG}
@@ -606,43 +952,23 @@ export const HandwrittenNotebookDisplay: React.FC<HandwrittenNotebookDisplayProp
                 ) : (
                   <FileText className="w-3.5 h-3.5" />
                 )}
-                <span>Baixar PDF</span>
+                <span>Salvar PDF</span>
               </button>
 
               <button
                 type="button"
-                onClick={handlePrint}
-                className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer"
-                title="Imprimir"
+                onClick={handleExportText}
+                disabled={Boolean(isExporting)}
+                className="flex-1 sm:flex-none px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-md shadow-indigo-600/30 cursor-pointer disabled:opacity-50"
               >
-                <Printer className="w-3.5 h-3.5" />
-                <span className="hidden md:inline">Imprimir</span>
+                <FileCode className="w-3.5 h-3.5" />
+                <span>Salvar TXT</span>
               </button>
             </div>
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-            <button
-              type="button"
-              onClick={onBackToCalculator}
-              className="w-full sm:w-auto px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30 transition-all cursor-pointer"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Fazer Outro Cálculo na Calculadora</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={onAlternativeMethod}
-              disabled={isLoadingAlternative}
-              className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-purple-100 dark:bg-purple-950/60 hover:bg-purple-200 dark:hover:bg-purple-900/60 text-purple-900 dark:text-purple-300 border border-purple-300 dark:border-purple-700 text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
-            >
-              <RotateCw className={`w-4 h-4 ${isLoadingAlternative ? 'animate-spin' : ''}`} />
-              <span>Ver Outro Método de Resolução</span>
-            </button>
           </div>
         </div>
       </div>
     </div>
   );
 };
+
