@@ -5,7 +5,11 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
 
-dotenv.config();
+// Load the project environment first because this custom Express server does not
+// automatically inherit Vite's `.env.development.local` loading behavior.
+dotenv.config({ path: '/vercel/share/.env.project' });
+dotenv.config({ path: '.env.development.local', override: false });
+dotenv.config({ path: '.env', override: false });
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -21,8 +25,15 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 let aiClient: GoogleGenAI | null = null;
 function getGenAI(): GoogleGenAI {
   if (!aiClient) {
-    const apiKey = process.env.GEMINI_API_KEY?.trim();
-    if (!apiKey) {
+    // The preview injects GEMINI_API_KEY at process start. Keep compatible
+    // aliases for local runners without ever exposing the secret to the client.
+    const apiKey = (
+      process.env.GEMINI_API_KEY ||
+      process.env.GOOGLE_API_KEY ||
+      process.env.API_KEY ||
+      ''
+    ).trim();
+    if (!apiKey || apiKey === 'MY_GEMINI_API_KEY') {
       throw new Error('A chave GEMINI_API_KEY não está configurada no servidor.');
     }
     aiClient = new GoogleGenAI({
