@@ -468,12 +468,12 @@ export default function App() {
             className="flex items-center gap-1.5 sm:gap-2.5 cursor-pointer group min-w-0"
           >
             <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-600 flex items-center justify-center shadow-md shadow-indigo-600/30 text-white group-hover:scale-105 transition-transform shrink-0">
-              <span className="font-serif text-lg sm:text-xl font-black leading-none select-none">α</span>
+              <span className="font-serif text-base sm:text-lg font-black leading-none select-none" aria-label="Ângulo Alfa">∠α</span>
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
                 <h1 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-1">
-                  <span className="font-serif text-lg sm:text-xl text-indigo-600 dark:text-indigo-400 font-black">α</span>
+                  <span className="font-serif text-base sm:text-lg text-indigo-600 dark:text-indigo-400 font-black" aria-label="Ângulo Alfa">∠α</span>
                   <span>Alfa</span>
                 </h1>
                 <span className="hidden md:flex text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-emerald-500/20 text-indigo-700 dark:text-emerald-300 border border-indigo-200 dark:border-emerald-500/30 uppercase tracking-wide items-center gap-1 shrink-0">
