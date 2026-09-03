@@ -285,8 +285,14 @@ export const HandwrittenNotebookDisplay: React.FC<HandwrittenNotebookDisplayProp
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
 
-      // Determine canvas slice height corresponding to one A4 page ratio
-      const pageCanvasHeight = (fullCanvas.width * pdfHeight) / pdfWidth;
+      // Centered margins (12mm on left and right)
+      const marginX = 12;
+      const marginY = 12;
+      const printableWidth = pdfWidth - marginX * 2;
+      const printableHeight = pdfHeight - marginY * 2;
+
+      // Determine canvas slice height corresponding to printable area ratio
+      const pageCanvasHeight = (fullCanvas.width * printableHeight) / printableWidth;
       const totalPages = Math.ceil(fullCanvas.height / pageCanvasHeight);
 
       for (let pageIdx = 0; pageIdx < totalPages; pageIdx++) {
@@ -301,12 +307,12 @@ export const HandwrittenNotebookDisplay: React.FC<HandwrittenNotebookDisplayProp
 
         const pageCanvas = document.createElement('canvas');
         pageCanvas.width = fullCanvas.width;
-        pageCanvas.height = pageCanvasHeight;
+        pageCanvas.height = currentSliceHeight;
 
         const ctx = pageCanvas.getContext('2d');
         if (ctx) {
           ctx.fillStyle = paperStyle === 'dark' ? '#0b1120' : '#faf8f5';
-          ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+          ctx.fillRect(0, 0, pageCanvas.width, currentSliceHeight);
 
           ctx.drawImage(
             fullCanvas,
@@ -320,17 +326,22 @@ export const HandwrittenNotebookDisplay: React.FC<HandwrittenNotebookDisplayProp
             currentSliceHeight
           );
 
+          const renderedHeightMm = (currentSliceHeight / pageCanvasHeight) * printableHeight;
+          const actualY = totalPages === 1 && renderedHeightMm < printableHeight
+            ? (pdfHeight - renderedHeightMm) / 2
+            : marginY;
+
           const imgData = pageCanvas.toDataURL('image/jpeg', 0.95);
-          pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
+          pdf.addImage(imgData, 'JPEG', marginX, actualY, printableWidth, renderedHeightMm, undefined, 'FAST');
         }
       }
 
-      const safeTitle = (solution.problemTitle || 'resolucao_matematica')
+      const safeTitle = (solution.problemTitle || 'resolucao_alfa')
         .toLowerCase()
         .replace(/[^a-z0-9_-]/g, '_')
         .slice(0, 35);
       pdf.save(`resolucao_${safeTitle}.pdf`);
-      setExportSuccess(`PDF completo gerado (${totalPages} páginas)!`);
+      setExportSuccess(`PDF completo gerado e centralizado (${totalPages} pág.)!`);
       setTimeout(() => setExportSuccess(null), 3000);
     } catch (error) {
       console.error('Erro ao exportar PDF:', error);
@@ -904,69 +915,6 @@ export const HandwrittenNotebookDisplay: React.FC<HandwrittenNotebookDisplayProp
             </div>
           </div>
         )}
-
-        {/* 7. BOTTOM EXPORT BAR */}
-        <div
-          data-export-ignore="true"
-          data-html2canvas-ignore="true"
-          className="mt-8 pt-4 border-t border-slate-300 dark:border-slate-700 flex flex-col gap-4"
-        >
-          <div className="p-3.5 sm:p-4 rounded-2xl bg-white/80 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-xl bg-indigo-500/20 text-indigo-400">
-                <Download className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100 block">
-                  Exportar Caderno Completo
-                </span>
-                <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Baixe todos os passos, fórmulas, explicações e gabarito em PNG, PDF ou TXT
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
-              <button
-                type="button"
-                onClick={handleExportPNG}
-                disabled={Boolean(isExporting)}
-                className="flex-1 sm:flex-none px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-md shadow-emerald-600/30 cursor-pointer disabled:opacity-50"
-              >
-                {isExporting === 'png' ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <ImageIcon className="w-3.5 h-3.5" />
-                )}
-                <span>Salvar PNG</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleExportPDF}
-                disabled={Boolean(isExporting)}
-                className="flex-1 sm:flex-none px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 active:scale-95 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-md shadow-rose-600/30 cursor-pointer disabled:opacity-50"
-              >
-                {isExporting === 'pdf' ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <FileText className="w-3.5 h-3.5" />
-                )}
-                <span>Salvar PDF</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleExportText}
-                disabled={Boolean(isExporting)}
-                className="flex-1 sm:flex-none px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-md shadow-indigo-600/30 cursor-pointer disabled:opacity-50"
-              >
-                <FileCode className="w-3.5 h-3.5" />
-                <span>Salvar TXT</span>
-              </button>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );

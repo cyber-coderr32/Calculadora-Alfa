@@ -1136,18 +1136,23 @@ export function solveGenericExpression(rawInput: string): MathSolution {
 
     steps.push({
       stepNumber: 1,
-      title: 'Interpretação e Estruturação da Expressão Matemática',
-      explanation: 'Analisamos os operandos, operadores e a ordem de precedência matemática (PEMDAS / BODMAS):',
+      title: `Estruturação do Exercício: ${parsed.toTex()}`,
+      explanation: `Analisamos a expressão matemática ${parsed.toTex()}, organizando os termos e identificando as operações prioritárias.`,
       mathExpression: parsed.toTex(),
-      tipOrRule: 'Ordem de Operações: 1º Parênteses, 2º Expoentes/Raízes, 3º Multiplicação/Divisão, 4º Adição/Subtração.',
+      tipOrRule: 'Ordem de Operações: 1º Parênteses, 2º Expoentes e Radicais, 3º Multiplicações e Divisões, 4º Adições e Subtrações.',
     });
 
-    steps.push({
-      stepNumber: 2,
-      title: 'Simplificação Algébrica dos Termos',
-      explanation: 'Realizamos a simplificação simbólica combinando termos semelhantes e aplicando identidades fundamentais:',
-      mathExpression: simplified.toTex(),
-    });
+    const parsedTex = parsed.toTex();
+    const simplifiedTex = simplified.toTex();
+
+    if (parsedTex !== simplifiedTex) {
+      steps.push({
+        stepNumber: 2,
+        title: 'Desenvolvimento e Simplificação dos Termos',
+        explanation: `Agrupamos e simplificamos os elementos semelhantes da expressão, resultando em: ${simplifiedTex}.`,
+        mathExpression: simplifiedTex,
+      });
+    }
 
     let exactAnswer = '';
     let approxAnswer = '';
@@ -1182,9 +1187,9 @@ export function solveGenericExpression(rawInput: string): MathSolution {
     }
 
     steps.push({
-      stepNumber: 3,
-      title: 'Cálculo do Valor Final',
-      explanation: 'Efetuamos os cálculos aritméticos finais para obter o resultado exato:',
+      stepNumber: steps.length + 1,
+      title: `Determinação do Valor Final: ${exactAnswer}`,
+      explanation: `Concluímos os cálculos da expressão ${parsed.toTex()}, obtendo a solução exata ${exactAnswer}${approxAnswer ? ` (${approxAnswer})` : ''}.`,
       mathExpression: `= ${exactAnswer}`,
     });
 

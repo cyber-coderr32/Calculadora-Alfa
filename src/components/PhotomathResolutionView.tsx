@@ -193,7 +193,7 @@ export const PhotomathResolutionView: React.FC<PhotomathResolutionViewProps> = (
     }
   };
 
-  // Export full resolution to PNG
+  // Export full resolution to PNG (Centered with theme awareness)
   const handleExportPNG = async () => {
     const element = document.getElementById('photomath-export-container');
     if (!element) return;
@@ -201,7 +201,9 @@ export const PhotomathResolutionView: React.FC<PhotomathResolutionViewProps> = (
     setIsExporting('png');
     setExportError(null);
     try {
-      const fullWidth = Math.max(element.scrollWidth, element.offsetWidth, 700);
+      const isDark = document.documentElement.classList.contains('dark');
+      const bgColor = isDark ? '#0f172a' : '#ffffff';
+      const fullWidth = Math.max(element.scrollWidth, element.offsetWidth, 720);
       const fullHeight = Math.max(element.scrollHeight, element.offsetHeight);
 
       const dataUrl = await toPng(element, {
@@ -210,7 +212,7 @@ export const PhotomathResolutionView: React.FC<PhotomathResolutionViewProps> = (
         height: fullHeight,
         canvasWidth: fullWidth * 2,
         canvasHeight: fullHeight * 2,
-        backgroundColor: '#0f172a',
+        backgroundColor: bgColor,
         skipFonts: true,
         fontEmbedCSS: '',
         cacheBust: true,
@@ -220,7 +222,7 @@ export const PhotomathResolutionView: React.FC<PhotomathResolutionViewProps> = (
           height: `${fullHeight}px`,
           width: `${fullWidth}px`,
           overflow: 'visible',
-          margin: '0',
+          margin: '0 auto',
         },
         filter: (node) => {
           if (node instanceof HTMLElement) {
@@ -233,7 +235,7 @@ export const PhotomathResolutionView: React.FC<PhotomathResolutionViewProps> = (
         },
       });
 
-      const safeTitle = (solution.problemTitle || 'resolucao_passo_a_passo')
+      const safeTitle = (solution.problemTitle || 'resolucao_alfa')
         .toLowerCase()
         .replace(/[^a-z0-9_-]/g, '_')
         .slice(0, 35);
@@ -241,7 +243,7 @@ export const PhotomathResolutionView: React.FC<PhotomathResolutionViewProps> = (
       link.download = `resolucao_${safeTitle}.png`;
       link.href = dataUrl;
       link.click();
-      setExportSuccess('PNG baixado com sucesso!');
+      setExportSuccess('Foto da resolução baixada com sucesso!');
       setTimeout(() => setExportSuccess(null), 3000);
     } catch (error) {
       console.error('Erro ao exportar PNG:', error);
@@ -252,7 +254,7 @@ export const PhotomathResolutionView: React.FC<PhotomathResolutionViewProps> = (
     }
   };
 
-  // Export full resolution to multi-page PDF
+  // Export full resolution to multi-page PDF (Centered horizontally with balanced page margins)
   const handleExportPDF = async () => {
     const element = document.getElementById('photomath-export-container');
     if (!element) return;
@@ -260,7 +262,9 @@ export const PhotomathResolutionView: React.FC<PhotomathResolutionViewProps> = (
     setIsExporting('pdf');
     setExportError(null);
     try {
-      const fullWidth = Math.max(element.scrollWidth, element.offsetWidth, 700);
+      const isDark = document.documentElement.classList.contains('dark');
+      const bgColor = isDark ? '#0f172a' : '#ffffff';
+      const fullWidth = Math.max(element.scrollWidth, element.offsetWidth, 720);
       const fullHeight = Math.max(element.scrollHeight, element.offsetHeight);
 
       const fullCanvas = await toCanvas(element, {
@@ -269,7 +273,7 @@ export const PhotomathResolutionView: React.FC<PhotomathResolutionViewProps> = (
         height: fullHeight,
         canvasWidth: fullWidth * 2,
         canvasHeight: fullHeight * 2,
-        backgroundColor: '#0f172a',
+        backgroundColor: bgColor,
         skipFonts: true,
         fontEmbedCSS: '',
         cacheBust: true,
@@ -279,7 +283,7 @@ export const PhotomathResolutionView: React.FC<PhotomathResolutionViewProps> = (
           height: `${fullHeight}px`,
           width: `${fullWidth}px`,
           overflow: 'visible',
-          margin: '0',
+          margin: '0 auto',
         },
         filter: (node) => {
           if (node instanceof HTMLElement) {
@@ -296,7 +300,13 @@ export const PhotomathResolutionView: React.FC<PhotomathResolutionViewProps> = (
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
 
-      const pageCanvasHeight = (fullCanvas.width * pdfHeight) / pdfWidth;
+      // Centered margins (12mm on left and right)
+      const marginX = 12;
+      const marginY = 12;
+      const printableWidth = pdfWidth - marginX * 2;
+      const printableHeight = pdfHeight - marginY * 2;
+
+      const pageCanvasHeight = (fullCanvas.width * printableHeight) / printableWidth;
       const totalPages = Math.ceil(fullCanvas.height / pageCanvasHeight);
 
       for (let pageIdx = 0; pageIdx < totalPages; pageIdx++) {
@@ -311,12 +321,12 @@ export const PhotomathResolutionView: React.FC<PhotomathResolutionViewProps> = (
 
         const pageCanvas = document.createElement('canvas');
         pageCanvas.width = fullCanvas.width;
-        pageCanvas.height = pageCanvasHeight;
+        pageCanvas.height = currentSliceHeight;
 
         const ctx = pageCanvas.getContext('2d');
         if (ctx) {
-          ctx.fillStyle = '#0f172a';
-          ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+          ctx.fillStyle = bgColor;
+          ctx.fillRect(0, 0, pageCanvas.width, currentSliceHeight);
 
           ctx.drawImage(
             fullCanvas,
@@ -330,17 +340,22 @@ export const PhotomathResolutionView: React.FC<PhotomathResolutionViewProps> = (
             currentSliceHeight
           );
 
+          const renderedHeightMm = (currentSliceHeight / pageCanvasHeight) * printableHeight;
+          const actualY = totalPages === 1 && renderedHeightMm < printableHeight
+            ? (pdfHeight - renderedHeightMm) / 2
+            : marginY;
+
           const imgData = pageCanvas.toDataURL('image/jpeg', 0.95);
-          pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
+          pdf.addImage(imgData, 'JPEG', marginX, actualY, printableWidth, renderedHeightMm, undefined, 'FAST');
         }
       }
 
-      const safeTitle = (solution.problemTitle || 'resolucao_passo_a_passo')
+      const safeTitle = (solution.problemTitle || 'resolucao_alfa')
         .toLowerCase()
         .replace(/[^a-z0-9_-]/g, '_')
         .slice(0, 35);
       pdf.save(`resolucao_${safeTitle}.pdf`);
-      setExportSuccess(`PDF completo gerado (${totalPages} páginas)!`);
+      setExportSuccess(`PDF completo gerado e centralizado (${totalPages} pág.)!`);
       setTimeout(() => setExportSuccess(null), 3000);
     } catch (error) {
       console.error('Erro ao exportar PDF:', error);
@@ -798,79 +813,9 @@ export const PhotomathResolutionView: React.FC<PhotomathResolutionViewProps> = (
             </div>
           )}
         </div>
-
-        {/* 4. BOTTOM DOWNLOAD & EXPORT PANEL */}
-        <div
-          data-export-ignore="true"
-          className="mt-6 p-4 sm:p-5 rounded-2xl bg-slate-900 text-white border border-slate-800 shadow-md space-y-3"
-        >
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <Download className="w-5 h-5 text-indigo-400" />
-              <span className="font-bold text-sm text-slate-100">
-                Baixar Resolução Completa
-              </span>
-            </div>
-            <span className="text-[11px] text-slate-400">
-              PNG • PDF • TXT
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
-            <button
-              type="button"
-              id="btn-bottom-export-png"
-              onClick={handleExportPNG}
-              disabled={Boolean(isExporting)}
-              className="px-3 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md active:scale-95 disabled:opacity-50 cursor-pointer"
-            >
-              {isExporting === 'png' ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <ImageIcon className="w-3.5 h-3.5" />
-              )}
-              <span>Baixar PNG</span>
-            </button>
-
-            <button
-              type="button"
-              id="btn-bottom-export-pdf"
-              onClick={handleExportPDF}
-              disabled={Boolean(isExporting)}
-              className="px-3 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md active:scale-95 disabled:opacity-50 cursor-pointer"
-            >
-              {isExporting === 'pdf' ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <FileText className="w-3.5 h-3.5" />
-              )}
-              <span>Baixar PDF</span>
-            </button>
-
-            <button
-              type="button"
-              id="btn-bottom-export-txt"
-              onClick={handleExportText}
-              disabled={Boolean(isExporting)}
-              className="px-3 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md active:scale-95 disabled:opacity-50 cursor-pointer"
-            >
-              <FileCode className="w-3.5 h-3.5" />
-              <span>Baixar TXT</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handlePrint}
-              className="px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 transition-all border border-slate-700 active:scale-95 cursor-pointer"
-            >
-              <Printer className="w-3.5 h-3.5" />
-              <span>Imprimir</span>
-            </button>
-          </div>
-        </div>
       </div>
 
-      {/* 5. FLOATING BOTTOM ACTION BAR (Photomath Style + PNG, PDF, Partilhar & Editar) */}
+      {/* 5. FLOATING BOTTOM ACTION BAR (Photomath Style: Restart, Next/Solution, Share & Edit) */}
       <div className="fixed bottom-0 left-0 right-0 z-40 bg-gradient-to-t from-white via-white to-transparent dark:from-slate-950 dark:via-slate-950 dark:to-transparent pt-6 pb-4 px-3 sm:px-4">
         <div className="max-w-xl mx-auto flex flex-col gap-2.5">
           {/* Main Controls Row: Restart Circle + Large Crimson Next Button */}
@@ -898,48 +843,14 @@ export const PhotomathResolutionView: React.FC<PhotomathResolutionViewProps> = (
             </button>
           </div>
 
-          {/* Action Pills Row: PNG, PDF, Partilhar & Editar */}
+          {/* Action Pills Row: Partilhar & Editar */}
           <div className="flex items-center justify-center gap-2 flex-wrap">
-            {/* Download PNG Button */}
-            <button
-              type="button"
-              id="btn-bar-export-png"
-              onClick={handleExportPNG}
-              disabled={Boolean(isExporting)}
-              className="px-3.5 py-2 rounded-full bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/50 text-emerald-300 text-xs font-bold flex items-center gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer disabled:opacity-50"
-              title="Baixar resolução em PNG"
-            >
-              {isExporting === 'png' ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <ImageIcon className="w-3.5 h-3.5" />
-              )}
-              <span>PNG</span>
-            </button>
-
-            {/* Download PDF Button */}
-            <button
-              type="button"
-              id="btn-bar-export-pdf"
-              onClick={handleExportPDF}
-              disabled={Boolean(isExporting)}
-              className="px-3.5 py-2 rounded-full bg-rose-950/80 hover:bg-rose-900 border border-rose-500/50 text-rose-300 text-xs font-bold flex items-center gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer disabled:opacity-50"
-              title="Baixar resolução em PDF"
-            >
-              {isExporting === 'pdf' ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <FileText className="w-3.5 h-3.5" />
-              )}
-              <span>PDF</span>
-            </button>
-
             {/* Share / Copy */}
             <button
               type="button"
               id="btn-bar-share"
               onClick={handleShare}
-              className="px-3.5 py-2 rounded-full bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer"
+              className="px-4 py-2 rounded-full bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer"
             >
               {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Share2 className="w-3.5 h-3.5" />}
               <span>{copied ? 'Copiado!' : 'Partilhar'}</span>
@@ -956,7 +867,7 @@ export const PhotomathResolutionView: React.FC<PhotomathResolutionViewProps> = (
                   onBackToCalculator();
                 }
               }}
-              className="px-3.5 py-2 rounded-full bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer"
+              className="px-4 py-2 rounded-full bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer"
             >
               <Edit3 className="w-3.5 h-3.5" />
               <span>Editar</span>

@@ -16,6 +16,16 @@ export interface FormattedStepView {
   }[];
 }
 
+function cleanLatex(val: string): string {
+  if (!val) return '';
+  let s = val.trim();
+  // Fix missing backslashes on color, mathbf and textcolor
+  s = s.replace(/(?<!\\)color\{/g, '\\color{');
+  s = s.replace(/(?<!\\)mathbf\{/g, '\\mathbf{');
+  s = s.replace(/(?<!\\)textcolor\{/g, '\\textcolor{');
+  return s;
+}
+
 /**
  * Ensures every step has clear Before and After mathematical expressions
  * with Photomath-style highlighted terms.
@@ -26,26 +36,32 @@ export function formatSolutionSteps(solution: MathSolution): FormattedStepView[]
   const originalInput = solution.originalInput || '';
 
   return solution.steps.map((step, index) => {
-    let beforeLatex = step.beforeExpression || '';
-    let afterLatex = step.afterExpression || '';
+    let beforeLatex = cleanLatex(step.beforeExpression || '');
+    let afterLatex = cleanLatex(step.afterExpression || '');
 
     // If beforeExpression is not set, derive from previous step or original input
     if (!beforeLatex) {
       if (index === 0) {
-        beforeLatex = originalInput || step.mathExpression || '';
+        beforeLatex = cleanLatex(originalInput || step.mathExpression || '');
       } else {
         const prevStep = solution.steps[index - 1];
-        beforeLatex = prevStep.afterExpression || prevStep.mathExpression || '';
+        beforeLatex = cleanLatex(prevStep.afterExpression || prevStep.mathExpression || '');
       }
     }
 
     // If afterExpression is not set, use current step mathExpression
     if (!afterLatex) {
-      afterLatex = step.mathExpression || beforeLatex;
+      afterLatex = cleanLatex(step.mathExpression || beforeLatex);
     }
 
     // Build subSteps list if available or construct default single sub-step
-    let subSteps = step.subSteps || [];
+    let subSteps = (step.subSteps || []).map((sub) => ({
+      beforeLatex: cleanLatex(sub.beforeLatex || beforeLatex),
+      afterLatex: cleanLatex(sub.afterLatex || afterLatex),
+      explanation: sub.explanation,
+      tip: sub.tip,
+    }));
+
     if (subSteps.length === 0) {
       subSteps = [
         {
@@ -63,7 +79,7 @@ export function formatSolutionSteps(solution: MathSolution): FormattedStepView[]
       explanation: step.explanation,
       beforeLatex,
       afterLatex,
-      mathExpression: step.mathExpression,
+      mathExpression: cleanLatex(step.mathExpression),
       tipOrRule: step.tipOrRule,
       subSteps,
     };

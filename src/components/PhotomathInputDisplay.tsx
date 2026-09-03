@@ -2,15 +2,13 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { MathRenderer } from './MathRenderer';
 import { MathSolution } from '../types';
 import { solveOffline } from '../engine/offlineSolver';
-import { X, ArrowRight, Sparkles, CheckCircle2, ChevronRight, CornerDownRight } from 'lucide-react';
+import { X, ArrowRight, Sparkles, CheckCircle2, ChevronRight, CornerDownRight, Trash2 } from 'lucide-react';
 
 interface PhotomathInputDisplayProps {
   input: string;
   onClear: () => void;
   onShowSolution: () => void;
   isLoading: boolean;
-  useNativeKeyboard: boolean;
-  onToggleNativeKeyboard: () => void;
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
   onInputChange: (val: string) => void;
 }
@@ -157,11 +155,20 @@ function parseInteractiveTokens(input: string): TokenSegment[] {
           expContent = input.substring(expStart);
           endToken = input.length;
         }
-      } else if (caretPos + 1 < input.length && /[0-9a-zA-Z]/.test(input[caretPos + 1])) {
-        expStart = caretPos + 1;
-        expEnd = caretPos + 2;
-        expContent = input[caretPos + 1];
-        endToken = caretPos + 2;
+      } else if (caretPos + 1 < input.length) {
+        const afterCaret = input.substring(caretPos + 1);
+        const matchExp = afterCaret.match(/^-?[0-9a-zA-Z\.]+/);
+        if (matchExp) {
+          expStart = caretPos + 1;
+          expEnd = caretPos + 1 + matchExp[0].length;
+          expContent = matchExp[0];
+          endToken = expEnd;
+        } else {
+          expStart = caretPos + 1;
+          expEnd = caretPos + 1;
+          expContent = '';
+          endToken = caretPos + 1;
+        }
       }
 
       tokens.push({
@@ -212,11 +219,20 @@ function parseInteractiveTokens(input: string): TokenSegment[] {
             expContent = input.substring(expStart);
             endToken = input.length;
           }
-        } else if (caretPos + 1 < input.length && /[0-9a-zA-Z]/.test(input[caretPos + 1])) {
-          expStart = caretPos + 1;
-          expEnd = caretPos + 2;
-          expContent = input[caretPos + 1];
-          endToken = caretPos + 2;
+        } else if (caretPos + 1 < input.length) {
+          const afterCaret = input.substring(caretPos + 1);
+          const matchExp = afterCaret.match(/^-?[0-9a-zA-Z\.]+/);
+          if (matchExp) {
+            expStart = caretPos + 1;
+            expEnd = caretPos + 1 + matchExp[0].length;
+            expContent = matchExp[0];
+            endToken = expEnd;
+          } else {
+            expStart = caretPos + 1;
+            expEnd = caretPos + 1;
+            expContent = '';
+            endToken = caretPos + 1;
+          }
         }
 
         tokens.push({
@@ -263,11 +279,20 @@ function parseInteractiveTokens(input: string): TokenSegment[] {
           expContent = input.substring(expStart);
           endToken = input.length;
         }
-      } else if (caretPos + 1 < input.length && /[0-9a-zA-Z]/.test(input[caretPos + 1])) {
-        expStart = caretPos + 1;
-        expEnd = caretPos + 2;
-        expContent = input[caretPos + 1];
-        endToken = caretPos + 2;
+      } else if (caretPos + 1 < input.length) {
+        const afterCaret = input.substring(caretPos + 1);
+        const matchExp = afterCaret.match(/^-?[0-9a-zA-Z\.]+/);
+        if (matchExp) {
+          expStart = caretPos + 1;
+          expEnd = caretPos + 1 + matchExp[0].length;
+          expContent = matchExp[0];
+          endToken = expEnd;
+        } else {
+          expStart = caretPos + 1;
+          expEnd = caretPos + 1;
+          expContent = '';
+          endToken = caretPos + 1;
+        }
       }
 
       tokens.push({
@@ -316,8 +341,6 @@ export const PhotomathInputDisplay: React.FC<PhotomathInputDisplayProps> = ({
   onClear,
   onShowSolution,
   isLoading,
-  useNativeKeyboard,
-  onToggleNativeKeyboard,
   textareaRef,
   onInputChange,
 }) => {
@@ -337,8 +360,7 @@ export const PhotomathInputDisplay: React.FC<PhotomathInputDisplayProps> = ({
   const setCursorToPosition = (targetPos: number, selectAllRange?: { start: number; end: number }) => {
     if (textareaRef.current) {
       try {
-        textareaRef.current.focus({ preventScroll: true });
-        if (selectAllRange && selectAllRange.end > selectAllRange.start) {
+        if (selectAllRange && selectAllRange.end >= selectAllRange.start) {
           textareaRef.current.setSelectionRange(selectAllRange.start, selectAllRange.end);
           setCursorPos(selectAllRange.end);
         } else {
@@ -346,7 +368,35 @@ export const PhotomathInputDisplay: React.FC<PhotomathInputDisplayProps> = ({
           setCursorPos(targetPos);
         }
       } catch {}
+    } else {
+      setCursorPos(targetPos);
     }
+  };
+
+  // Function to directly change exponent by clicking on screen
+  const handleDirectChangeExponent = (expSlot: ExponentSlot, newExponentVal: string) => {
+    const beforeBaseEnd = input.substring(0, expSlot.baseRange.end);
+    const afterToken = input.substring(expSlot.fullRange.end);
+
+    const replacement = newExponentVal === '' ? '^{}' : `^{${newExponentVal}}`;
+    const nextInput = beforeBaseEnd + replacement + afterToken;
+    onInputChange(nextInput);
+
+    const newCursor = beforeBaseEnd.length + (newExponentVal === '' ? 2 : replacement.length - 1);
+    setTimeout(() => {
+      setCursorToPosition(newCursor);
+    }, 10);
+  };
+
+  // Function to remove exponent completely
+  const handleRemoveExponent = (expSlot: ExponentSlot) => {
+    const beforeBaseEnd = input.substring(0, expSlot.baseRange.end);
+    const afterToken = input.substring(expSlot.fullRange.end);
+    const nextInput = beforeBaseEnd + afterToken;
+    onInputChange(nextInput);
+    setTimeout(() => {
+      setCursorToPosition(beforeBaseEnd.length);
+    }, 10);
   };
 
   // Parse structured interactive tokens (fractions, roots, exponents)
@@ -389,11 +439,19 @@ export const PhotomathInputDisplay: React.FC<PhotomathInputDisplayProps> = ({
           onInputChange(e.target.value);
           setCursorPos(e.target.selectionStart ?? e.target.value.length);
         }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            onShowSolution();
+          }
+        }}
         onSelect={updateCursorFromTextarea}
         onClick={updateCursorFromTextarea}
         onKeyUp={updateCursorFromTextarea}
-        inputMode={useNativeKeyboard ? 'text' : 'none'}
-        className="opacity-0 absolute -z-10 h-0 w-0 pointer-events-none"
+        readOnly={true}
+        inputMode="none"
+        tabIndex={-1}
+        className="opacity-0 absolute -z-10 w-0 h-0 pointer-events-none overflow-hidden"
         autoComplete="off"
         autoCorrect="off"
         spellCheck={false}
@@ -414,7 +472,7 @@ export const PhotomathInputDisplay: React.FC<PhotomathInputDisplayProps> = ({
                 </span>
                 <button
                   type="button"
-                  onClick={() => setCursorToPosition(frac.numRange.end)}
+                  onClick={() => setCursorToPosition(frac.numRange.end, { start: frac.numRange.start, end: frac.numRange.end })}
                   className={`px-2 py-0.5 rounded-lg text-xs font-bold transition-all cursor-pointer select-none ${
                     isNumActive
                       ? 'bg-rose-600 text-white shadow-sm ring-1 ring-rose-400'
@@ -427,7 +485,7 @@ export const PhotomathInputDisplay: React.FC<PhotomathInputDisplayProps> = ({
                 <span className="text-slate-400 dark:text-slate-600 font-bold">/</span>
                 <button
                   type="button"
-                  onClick={() => setCursorToPosition(frac.denRange.end)}
+                  onClick={() => setCursorToPosition(frac.denRange.end, { start: frac.denRange.start, end: frac.denRange.end })}
                   className={`px-2 py-0.5 rounded-lg text-xs font-bold transition-all cursor-pointer select-none ${
                     isDenActive
                       ? 'bg-rose-600 text-white shadow-sm ring-1 ring-rose-400'
@@ -447,14 +505,14 @@ export const PhotomathInputDisplay: React.FC<PhotomathInputDisplayProps> = ({
             const isExpActive = cursorPos >= expSlot.expRange.start && cursorPos <= expSlot.expRange.end;
 
             return (
-              <div key={`e-${idx}`} className="flex items-center gap-1 bg-slate-100 dark:bg-slate-950 px-2 py-1 rounded-xl border border-indigo-200 dark:border-indigo-900/50 shrink-0">
+              <div key={`e-${idx}`} className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-950 px-2 py-1 rounded-xl border border-indigo-200 dark:border-indigo-900/50 shrink-0">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
                   Potência:
                 </span>
                 {/* Base jump button */}
                 <button
                   type="button"
-                  onClick={() => setCursorToPosition(expSlot.baseRange.end)}
+                  onClick={() => setCursorToPosition(expSlot.baseRange.end, { start: expSlot.baseRange.start, end: expSlot.baseRange.end })}
                   className={`px-2 py-0.5 rounded-lg text-xs font-bold transition-all cursor-pointer select-none ${
                     isBaseActive
                       ? 'bg-indigo-600 text-white shadow-sm ring-1 ring-indigo-400'
@@ -467,19 +525,50 @@ export const PhotomathInputDisplay: React.FC<PhotomathInputDisplayProps> = ({
 
                 <span className="text-slate-400 dark:text-slate-500 font-bold">^</span>
 
-                {/* Exponent jump button */}
+                {/* Exponent select button */}
                 <button
                   type="button"
-                  onClick={() => setCursorToPosition(expSlot.expRange.end)}
-                  className={`px-2 py-0.5 rounded-lg text-xs font-bold transition-all cursor-pointer select-none ${
+                  onClick={() => {
+                    setCursorToPosition(expSlot.expRange.start, { start: expSlot.expRange.start, end: expSlot.expRange.end });
+                  }}
+                  className={`px-2 py-0.5 rounded-lg text-xs font-bold transition-all cursor-pointer select-none flex items-center gap-1 ${
                     isExpActive
                       ? 'bg-rose-600 text-white shadow-sm ring-1 ring-rose-400'
                       : 'bg-white dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-rose-700 dark:text-rose-300 border border-slate-200 dark:border-transparent'
                   }`}
-                  title="Editar Expoente (elevado)"
+                  title="Selecionar expoente para editar"
                 >
-                  Elevado a: {expSlot.expRange.content || '□'}
+                  <span>Expoente: {expSlot.expRange.content || '□'}</span>
                 </button>
+
+                {/* Direct quick exponent preset buttons right on the bar! */}
+                <div className="flex items-center gap-1 border-l border-slate-300 dark:border-slate-800 pl-1.5 ml-0.5">
+                  {[
+                    { label: '²', val: '2', title: 'Mudar para ao quadrado (²)' },
+                    { label: '³', val: '3', title: 'Mudar para ao cubo (³)' },
+                    { label: '⁴', val: '4', title: 'Mudar para expoente 4 (⁴)' },
+                    { label: '⁻¹', val: '-1', title: 'Mudar para expoente -1 (⁻¹)' },
+                    { label: 'ⁿ', val: 'n', title: 'Mudar para expoente n' },
+                  ].map((preset) => (
+                    <button
+                      key={preset.val}
+                      type="button"
+                      onClick={() => handleDirectChangeExponent(expSlot, preset.val)}
+                      className="px-1.5 py-0.5 rounded-md bg-white dark:bg-slate-800 hover:bg-rose-100 dark:hover:bg-rose-950 text-slate-800 dark:text-slate-200 hover:text-rose-600 dark:hover:text-rose-400 text-xs font-bold border border-slate-200 dark:border-slate-700 active:scale-95 transition-all cursor-pointer select-none"
+                      title={preset.title}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveExponent(expSlot)}
+                    className="p-1 rounded-md bg-white dark:bg-slate-800 hover:bg-red-100 dark:hover:bg-red-950 text-red-600 dark:text-red-400 text-xs font-bold border border-slate-200 dark:border-slate-700 active:scale-95 transition-all cursor-pointer select-none"
+                    title="Remover expoente"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
               </div>
             );
           })}
@@ -512,19 +601,10 @@ export const PhotomathInputDisplay: React.FC<PhotomathInputDisplayProps> = ({
       )}
 
       {/* TOP: Photomath-style Interactive Visual Formula Display with Clickable Numerator / Denominator / Base / Exponent Slots */}
-      <div
-        onClick={() => {
-          if (textareaRef.current) {
-            try {
-              textareaRef.current.focus({ preventScroll: true });
-            } catch {}
-          }
-        }}
-        className="relative min-h-[95px] sm:min-h-[110px] flex items-center justify-between p-3 sm:p-4 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800/90 hover:border-slate-300 dark:hover:border-slate-700 transition-all cursor-text group"
-      >
-        <div className="flex-1 overflow-x-auto py-2 scrollbar-thin">
+      <div className="relative min-h-[70px] sm:min-h-[82px] flex items-center justify-between p-2.5 sm:p-3.5 bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800/90 hover:border-slate-300 dark:hover:border-slate-700 transition-all select-none group">
+        <div className="flex-1 overflow-x-auto py-1.5 scrollbar-thin">
           {input.trim() ? (
-            <div className="flex items-center gap-1.5 flex-wrap text-xl sm:text-2xl md:text-3xl font-medium text-slate-900 dark:text-white tracking-wide select-none">
+            <div className="flex items-center gap-1.5 flex-wrap text-base sm:text-lg md:text-xl font-medium text-slate-900 dark:text-white select-none">
               {/* Render interactive segments */}
               {tokens.map((token, idx) => {
                 if (token.type === 'fraction' && token.fraction) {
@@ -610,7 +690,7 @@ export const PhotomathInputDisplay: React.FC<PhotomathInputDisplayProps> = ({
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setCursorToPosition(expSlot.baseRange.end);
+                          setCursorToPosition(expSlot.baseRange.end, { start: expSlot.baseRange.start, end: expSlot.baseRange.end });
                         }}
                         className={`min-w-[26px] px-1.5 py-0.5 rounded-md font-sans text-center transition-all cursor-pointer inline-flex items-center justify-center ${
                           isBaseActive
@@ -638,24 +718,24 @@ export const PhotomathInputDisplay: React.FC<PhotomathInputDisplayProps> = ({
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setCursorToPosition(expSlot.expRange.end);
+                          setCursorToPosition(expSlot.expRange.start, { start: expSlot.expRange.start, end: expSlot.expRange.end });
                         }}
-                        className={`-top-3 relative -ml-0.5 min-w-[20px] px-1 py-0.5 rounded-md font-sans text-center transition-all cursor-pointer inline-flex items-center justify-center text-xs sm:text-sm ${
+                        className={`-top-3 relative -ml-0.5 min-w-[22px] px-1.5 py-0.5 rounded-md font-sans text-center transition-all cursor-pointer inline-flex items-center justify-center text-xs sm:text-sm ${
                           isExpActive
-                            ? 'bg-rose-100 dark:bg-rose-950/90 border-2 border-rose-500 text-rose-950 dark:text-white ring-2 ring-rose-500/40 shadow-sm'
+                            ? 'bg-rose-600 text-white font-black ring-2 ring-rose-400 shadow-md scale-110 z-10'
                             : expSlot.expRange.content
-                            ? 'hover:bg-slate-200/80 dark:hover:bg-slate-800/80 text-rose-700 dark:text-rose-300 font-bold'
+                            ? 'bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 font-bold'
                             : 'border-2 border-dashed border-rose-400 bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-300 animate-pulse min-h-[22px] min-w-[22px]'
                         }`}
-                        title="Clique aqui para editar o Expoente (potência elevada)"
+                        title="Clique aqui para selecionar o expoente"
                       >
                         {expSlot.expRange.content ? (
-                          <span className="font-sans leading-none font-bold text-rose-700 dark:text-rose-300">{expSlot.expRange.content}</span>
+                          <span className="font-sans leading-none font-bold">{expSlot.expRange.content}</span>
                         ) : (
                           <span className="w-3 h-3 border border-dashed border-rose-400 rounded-xs inline-block" />
                         )}
                         {isExpActive && (
-                          <span className="inline-block w-[2px] h-3.5 bg-rose-500 rounded-full animate-pulse ml-0.5" />
+                          <span className="inline-block w-[2px] h-3.5 bg-white rounded-full animate-pulse ml-0.5" />
                         )}
                       </button>
                     </div>
@@ -718,41 +798,43 @@ export const PhotomathInputDisplay: React.FC<PhotomathInputDisplayProps> = ({
               )}
             </div>
           ) : (
-            <div className="flex items-center text-slate-400 dark:text-slate-500 text-base sm:text-lg">
+            <div className="flex items-center text-slate-400 dark:text-slate-500 text-sm sm:text-base">
               <span>Digite ou toque nos botões para começar...</span>
-              <span className="inline-block w-[3px] h-6 bg-rose-500 rounded-full animate-pulse ml-1" />
+              <span className="inline-block w-[3px] h-5 bg-rose-500 rounded-full animate-pulse ml-1" />
             </div>
           )}
         </div>
 
         {/* Clear Button (Photomath X icon) */}
         {input.trim().length > 0 && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onClear();
-            }}
-            className="w-9 h-9 rounded-full bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 active:bg-rose-100 dark:active:bg-rose-950 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center justify-center transition-all cursor-pointer shrink-0 ml-2 shadow-xs"
-            title="Limpar campo"
-            aria-label="Limpar"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center shrink-0 ml-2">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onClear();
+              }}
+              className="w-8 h-8 rounded-full bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 active:bg-rose-100 dark:active:bg-rose-950 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center justify-center transition-all cursor-pointer shadow-xs"
+              title="Limpar campo"
+              aria-label="Limpar"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         )}
       </div>
 
       {/* BOTTOM: Photomath Result Section with Red Accent Bar and 'Mostrar Solução' */}
       {liveResult.solution && liveResult.solution.finalAnswer?.exact && (
-        <div className="pt-3 border-t border-dashed border-slate-200 dark:border-slate-800 animate-fade-in">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 sm:gap-4">
+        <div className="pt-2.5 border-t border-dashed border-slate-200 dark:border-slate-800 animate-fade-in">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
             {/* Answer Display with Red Bar */}
-            <div className="flex items-start gap-3 pl-1">
-              <div className="w-1.5 self-stretch min-h-[48px] bg-rose-600 rounded-full shrink-0 shadow-sm shadow-rose-600/50" />
-              <div className="space-y-1">
+            <div className="flex items-start gap-2.5 pl-1">
+              <div className="w-1.5 self-stretch min-h-[40px] bg-rose-600 rounded-full shrink-0 shadow-sm shadow-rose-600/50" />
+              <div className="space-y-0.5">
                 {/* Exact Main Answer */}
-                <div className="flex items-center gap-2 text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
-                  <span className="text-slate-400 dark:text-slate-500 font-normal text-xl">=</span>
+                <div className="flex items-center gap-2 text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
+                  <span className="text-slate-400 dark:text-slate-500 font-normal text-lg">=</span>
                   <div className="text-emerald-600 dark:text-emerald-400">
                     <MathRenderer math={liveResult.solution.finalAnswer.exact} inline />
                   </div>

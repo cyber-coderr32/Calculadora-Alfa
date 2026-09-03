@@ -8,6 +8,92 @@ interface MathRendererProps {
   inline?: boolean;
 }
 
+function escapeHtml(str: string) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function sanitizeLatexString(raw: string): string {
+  if (!raw) return '';
+  let s = raw.trim();
+
+  // Strip leading/trailing delimiters
+  if (s.startsWith('$$') && s.endsWith('$$') && s.length > 4) {
+    s = s.slice(2, -2).trim();
+  } else if (s.startsWith('$') && s.endsWith('$') && s.length > 2) {
+    s = s.slice(1, -1).trim();
+  } else if (s.startsWith('\\(') && s.endsWith('\\)') && s.length > 4) {
+    s = s.slice(2, -2).trim();
+  } else if (s.startsWith('\\[') && s.endsWith('\\]') && s.length > 4) {
+    s = s.slice(2, -2).trim();
+  }
+
+  // Fix missing backslashes on color, mathbf and textcolor (e.g. \mathbf{color{#e11d48}{...}} -> \mathbf{\color{#e11d48}{...}})
+  s = s.replace(/(?<!\\)color\{/g, '\\color{');
+  s = s.replace(/(?<!\\)mathbf\{/g, '\\mathbf{');
+  s = s.replace(/(?<!\\)textcolor\{/g, '\\textcolor{');
+
+  // Balance unclosed curly braces if any
+  const openCount = (s.match(/\{/g) || []).length;
+  const closeCount = (s.match(/\}/g) || []).length;
+  if (openCount > closeCount) {
+    s += '}'.repeat(openCount - closeCount);
+  }
+
+  return s;
+}
+
+function renderLatexSafely(raw: string, isDisplayMode: boolean): string {
+  const sanitized = sanitizeLatexString(raw);
+  if (!sanitized) return '';
+
+  try {
+    const rendered = katex.renderToString(sanitized, {
+      displayMode: isDisplayMode,
+      throwOnError: false,
+      output: 'htmlAndMathml',
+      trust: true,
+    });
+
+    // If KaTeX outputted an internal katex-error tag, recover gracefully
+    if (rendered.includes('katex-error')) {
+      // Try stripping problematic color and bold commands to recover the pure math formula
+      const cleanedFormula = sanitized
+        .replace(/\\?mathbf\{/gi, '')
+        .replace(/\\?color\{[^}]*\}\{?/gi, '')
+        .replace(/\\?textcolor\{[^}]*\}\{?/gi, '')
+        .replace(/[{}]/g, '')
+        .trim();
+
+      if (cleanedFormula) {
+        const fallbackRendered = katex.renderToString(cleanedFormula, {
+          displayMode: isDisplayMode,
+          throwOnError: false,
+          output: 'htmlAndMathml',
+          trust: true,
+        });
+        if (!fallbackRendered.includes('katex-error')) {
+          return fallbackRendered;
+        }
+      }
+
+      // If still invalid, display clean readable math text without raw LaTeX command names
+      const plainText = sanitized.replace(/\\[a-zA-Z]+/g, '').replace(/[{}]/g, '').trim();
+      return `<span class="font-mono text-sm">${escapeHtml(plainText || sanitized)}</span>`;
+    }
+
+    return rendered;
+  } catch (err) {
+    console.warn('KaTeX rendering error:', err);
+    const plainText = sanitized.replace(/\\[a-zA-Z]+/g, '').replace(/[{}]/g, '').trim();
+    return `<span class="font-mono text-sm">${escapeHtml(plainText || sanitized)}</span>`;
+  }
+}
+
 export const MathRenderer: React.FC<MathRendererProps> = ({
   math,
   block = false,
@@ -18,40 +104,8 @@ export const MathRenderer: React.FC<MathRendererProps> = ({
 
   const html = useMemo(() => {
     if (!math || typeof math !== 'string') return '';
-
-    // Clean up surrounding delimiters if already present
-    let cleanMath = math.trim();
-    if (cleanMath.startsWith('$$') && cleanMath.endsWith('$$') && cleanMath.length > 4) {
-      cleanMath = cleanMath.slice(2, -2).trim();
-    } else if (cleanMath.startsWith('$') && cleanMath.endsWith('$') && cleanMath.length > 2) {
-      cleanMath = cleanMath.slice(1, -1).trim();
-    } else if (cleanMath.startsWith('\\(') && cleanMath.endsWith('\\)') && cleanMath.length > 4) {
-      cleanMath = cleanMath.slice(2, -2).trim();
-    } else if (cleanMath.startsWith('\\[') && cleanMath.endsWith('\\]') && cleanMath.length > 4) {
-      cleanMath = cleanMath.slice(2, -2).trim();
-    }
-
-    try {
-      return katex.renderToString(cleanMath, {
-        displayMode: isDisplayMode,
-        throwOnError: false,
-        output: 'htmlAndMathml',
-        trust: true,
-      });
-    } catch (err) {
-      console.warn('KaTeX rendering error:', err);
-      return `<span class="text-amber-300 font-mono text-sm">${escapeHtml(cleanMath)}</span>`;
-    }
+    return renderLatexSafely(math, isDisplayMode);
   }, [math, isDisplayMode]);
-
-  function escapeHtml(str: string) {
-    return str
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
-  }
 
   if (isDisplayMode) {
     const hasBg = className.includes('bg-');
