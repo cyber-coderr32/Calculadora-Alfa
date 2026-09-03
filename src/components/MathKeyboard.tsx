@@ -285,7 +285,7 @@ export const MathKeyboard: React.FC<MathKeyboardProps> = ({
   };
 
   return (
-    <div className="w-full flex flex-col bg-slate-900 border border-slate-800 rounded-3xl p-3 sm:p-4 md:p-5 shadow-2xl space-y-3 box-border overflow-hidden">
+    <div className="w-full flex-1 flex flex-col justify-between bg-slate-900 border border-slate-800 rounded-3xl p-2.5 sm:p-4 md:p-5 shadow-2xl box-border overflow-hidden min-h-0 gap-2 sm:gap-2.5">
       {/* Structure Builder Modal */}
       <MathStructureModal
         isOpen={isStructureModalOpen}
@@ -294,7 +294,7 @@ export const MathKeyboard: React.FC<MathKeyboardProps> = ({
       />
 
       {/* 1. PHOTOMATH TOP UTILITY ROW: [abc] [⟲] [←] [→] [⇄] [⌫] */}
-      <div className="flex items-center justify-between gap-1.5 sm:gap-2 px-0.5">
+      <div className="flex items-center justify-between gap-1.5 sm:gap-2 px-0.5 shrink-0">
         {/* abc - Switch to variable letters / native keyboard */}
         <button
           type="button"
@@ -370,7 +370,7 @@ export const MathKeyboard: React.FC<MathKeyboardProps> = ({
       </div>
 
       {/* 2. PHOTOMATH CATEGORY PILLS: [+-×÷] [> < ≥ ≤ ≠] [f(x) e / log ln] [sin cos / tan cot] [lim dx / ∫ ∑ ∞] */}
-      <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 scrollbar-none px-0.5">
+      <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 scrollbar-none px-0.5 shrink-0">
         {[
           { id: 'basic', label: '+ − × ÷' },
           { id: 'inequalities', label: '> < ≥ ≤ ≠' },
@@ -400,16 +400,16 @@ export const MathKeyboard: React.FC<MathKeyboardProps> = ({
       </div>
 
       {/* 3. PHOTOMATH EXTENDED KEYPAD GRID */}
-      <div className="pt-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-h-0 justify-between gap-1.5 sm:gap-2">
         {/* A. BASIC ARITHMETIC GRID */}
         {activeCategory === 'basic' && (
-          <div className="space-y-2 sm:space-y-2.5">
+          <div className="flex-1 flex flex-col justify-between gap-1.5 sm:gap-2 min-h-0">
             {/* Quick Relational & Inequality Bar */}
-            <div className="grid grid-cols-6 gap-1.5 sm:gap-2">
+            <div className="grid grid-cols-6 gap-1.5 sm:gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => insertTextAtCursor(' < ')}
-                className="h-9 sm:h-10 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800/90 hover:border-slate-700 text-slate-200 hover:text-white font-bold text-sm sm:text-base flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
+                className="h-8 sm:h-9 md:h-10 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800/90 hover:border-slate-700 text-slate-200 hover:text-white font-bold text-sm sm:text-base flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
                 title="Menor que (<)"
               >
                 &lt;
@@ -417,7 +417,7 @@ export const MathKeyboard: React.FC<MathKeyboardProps> = ({
               <button
                 type="button"
                 onClick={() => insertTextAtCursor(' > ')}
-                className="h-9 sm:h-10 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800/90 hover:border-slate-700 text-slate-200 hover:text-white font-bold text-sm sm:text-base flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
+                className="h-8 sm:h-9 md:h-10 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800/90 hover:border-slate-700 text-slate-200 hover:text-white font-bold text-sm sm:text-base flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
                 title="Maior que (>)"
               >
                 &gt;
@@ -425,7 +425,7 @@ export const MathKeyboard: React.FC<MathKeyboardProps> = ({
               <button
                 type="button"
                 onClick={() => insertTextAtCursor(' \\le ')}
-                className="h-9 sm:h-10 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800/90 hover:border-slate-700 text-rose-300 hover:text-rose-200 font-bold text-sm sm:text-base flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
+                className="h-8 sm:h-9 md:h-10 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800/90 hover:border-slate-700 text-rose-300 hover:text-rose-200 font-bold text-sm sm:text-base flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
                 title="Menor ou igual (≤)"
               >
                 ≤
@@ -433,7 +433,7 @@ export const MathKeyboard: React.FC<MathKeyboardProps> = ({
               <button
                 type="button"
                 onClick={() => insertTextAtCursor(' \\ge ')}
-                className="h-9 sm:h-10 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800/90 hover:border-slate-700 text-rose-300 hover:text-rose-200 font-bold text-sm sm:text-base flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
+                className="h-8 sm:h-9 md:h-10 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800/90 hover:border-slate-700 text-rose-300 hover:text-rose-200 font-bold text-sm sm:text-base flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
                 title="Maior ou igual (≥)"
               >
                 ≥
@@ -441,7 +441,7 @@ export const MathKeyboard: React.FC<MathKeyboardProps> = ({
               <button
                 type="button"
                 onClick={() => insertTextAtCursor(' \\ne ')}
-                className="h-9 sm:h-10 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800/90 hover:border-slate-700 text-amber-300 hover:text-amber-200 font-bold text-sm sm:text-base flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
+                className="h-8 sm:h-9 md:h-10 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800/90 hover:border-slate-700 text-amber-300 hover:text-amber-200 font-bold text-sm sm:text-base flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
                 title="Diferente de (≠)"
               >
                 ≠
@@ -449,7 +449,7 @@ export const MathKeyboard: React.FC<MathKeyboardProps> = ({
               <button
                 type="button"
                 onClick={() => insertTextAtCursor(' = ')}
-                className="h-9 sm:h-10 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800/90 hover:border-slate-700 text-emerald-400 hover:text-emerald-300 font-bold text-sm sm:text-base flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
+                className="h-8 sm:h-9 md:h-10 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800/90 hover:border-slate-700 text-emerald-400 hover:text-emerald-300 font-bold text-sm sm:text-base flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
                 title="Igualdade (=)"
               >
                 =
@@ -457,12 +457,12 @@ export const MathKeyboard: React.FC<MathKeyboardProps> = ({
             </div>
 
             {/* Main Numeric & Operator Matrix */}
-            <div className="grid grid-cols-6 gap-1.5 sm:gap-2.5">
+            <div className="flex-1 grid grid-cols-6 grid-rows-4 gap-1.5 sm:gap-2.5 min-h-0">
               {/* ROW 1: (□) | |□| | 7 | 8 | 9 | ÷ */}
               <button
                 type="button"
                 onClick={handleParentheses}
-                className="h-12 sm:h-14 md:h-15 rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white font-medium text-sm sm:text-base flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
+                className="h-full w-full min-h-[46px] sm:min-h-[52px] rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white font-medium text-sm sm:text-base flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
                 title="Parênteses"
               >
                 <span className="flex items-center text-rose-400 font-bold">
@@ -473,7 +473,7 @@ export const MathKeyboard: React.FC<MathKeyboardProps> = ({
               <button
                 type="button"
                 onClick={() => insertTextAtCursor('|x|')}
-                className="h-12 sm:h-14 md:h-15 rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white font-bold text-sm sm:text-base flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
+                className="h-full w-full min-h-[46px] sm:min-h-[52px] rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white font-bold text-sm sm:text-base flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
                 title="Valor Absoluto / Módulo (|x|)"
               >
                 |x|
@@ -482,21 +482,21 @@ export const MathKeyboard: React.FC<MathKeyboardProps> = ({
               <button
                 type="button"
                 onClick={() => insertTextAtCursor('7')}
-                className="h-12 sm:h-14 md:h-15 rounded-2xl bg-slate-800/90 hover:bg-slate-700 text-white font-bold text-xl sm:text-2xl flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none shadow-sm"
+                className="h-full w-full min-h-[46px] sm:min-h-[52px] rounded-2xl bg-slate-800/90 hover:bg-slate-700 text-white font-bold text-xl sm:text-2xl flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none shadow-sm"
               >
                 7
               </button>
               <button
                 type="button"
                 onClick={() => insertTextAtCursor('8')}
-                className="h-12 sm:h-14 md:h-15 rounded-2xl bg-slate-800/90 hover:bg-slate-700 text-white font-bold text-xl sm:text-2xl flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none shadow-sm"
+                className="h-full w-full min-h-[46px] sm:min-h-[52px] rounded-2xl bg-slate-800/90 hover:bg-slate-700 text-white font-bold text-xl sm:text-2xl flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none shadow-sm"
               >
                 8
               </button>
               <button
                 type="button"
                 onClick={() => insertTextAtCursor('9')}
-                className="h-12 sm:h-14 md:h-15 rounded-2xl bg-slate-800/90 hover:bg-slate-700 text-white font-bold text-xl sm:text-2xl flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none shadow-sm"
+                className="h-full w-full min-h-[46px] sm:min-h-[52px] rounded-2xl bg-slate-800/90 hover:bg-slate-700 text-white font-bold text-xl sm:text-2xl flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none shadow-sm"
               >
                 9
               </button>
@@ -504,7 +504,7 @@ export const MathKeyboard: React.FC<MathKeyboardProps> = ({
               <button
                 type="button"
                 onClick={() => insertTextAtCursor(' / ')}
-                className="h-12 sm:h-14 md:h-15 rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white font-bold text-xl sm:text-2xl flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
+                className="h-full w-full min-h-[46px] sm:min-h-[52px] rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white font-bold text-xl sm:text-2xl flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
                 title="Divisão"
               >
                 ÷
@@ -514,7 +514,7 @@ export const MathKeyboard: React.FC<MathKeyboardProps> = ({
               <button
                 type="button"
                 onClick={insertSmartFraction}
-                className="h-12 sm:h-14 md:h-15 rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white font-medium flex flex-col items-center justify-center active:scale-95 transition-all cursor-pointer select-none p-1"
+                className="h-full w-full min-h-[46px] sm:min-h-[52px] rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white font-medium flex flex-col items-center justify-center active:scale-95 transition-all cursor-pointer select-none p-1"
                 title="Fração Vertical (número sobre o outro)"
               >
                 <div className="flex flex-col items-center justify-center leading-none">
@@ -527,7 +527,7 @@ export const MathKeyboard: React.FC<MathKeyboardProps> = ({
               <button
                 type="button"
                 onClick={insertSmartSquareRoot}
-                className="h-12 sm:h-14 md:h-15 rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white font-medium flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
+                className="h-full w-full min-h-[46px] sm:min-h-[52px] rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white font-medium flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
                 title="Raiz Quadrada"
               >
                 <div className="flex items-center text-slate-200">
@@ -539,21 +539,21 @@ export const MathKeyboard: React.FC<MathKeyboardProps> = ({
               <button
                 type="button"
                 onClick={() => insertTextAtCursor('4')}
-                className="h-12 sm:h-14 md:h-15 rounded-2xl bg-slate-800/90 hover:bg-slate-700 text-white font-bold text-xl sm:text-2xl flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none shadow-sm"
+                className="h-full w-full min-h-[46px] sm:min-h-[52px] rounded-2xl bg-slate-800/90 hover:bg-slate-700 text-white font-bold text-xl sm:text-2xl flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none shadow-sm"
               >
                 4
               </button>
               <button
                 type="button"
                 onClick={() => insertTextAtCursor('5')}
-                className="h-12 sm:h-14 md:h-15 rounded-2xl bg-slate-800/90 hover:bg-slate-700 text-white font-bold text-xl sm:text-2xl flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none shadow-sm"
+                className="h-full w-full min-h-[46px] sm:min-h-[52px] rounded-2xl bg-slate-800/90 hover:bg-slate-700 text-white font-bold text-xl sm:text-2xl flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none shadow-sm"
               >
                 5
               </button>
               <button
                 type="button"
                 onClick={() => insertTextAtCursor('6')}
-                className="h-12 sm:h-14 md:h-15 rounded-2xl bg-slate-800/90 hover:bg-slate-700 text-white font-bold text-xl sm:text-2xl flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none shadow-sm"
+                className="h-full w-full min-h-[46px] sm:min-h-[52px] rounded-2xl bg-slate-800/90 hover:bg-slate-700 text-white font-bold text-xl sm:text-2xl flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none shadow-sm"
               >
                 6
               </button>
@@ -561,7 +561,7 @@ export const MathKeyboard: React.FC<MathKeyboardProps> = ({
               <button
                 type="button"
                 onClick={() => insertTextAtCursor(' \\cdot ')}
-                className="h-12 sm:h-14 md:h-15 rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white font-bold text-xl sm:text-2xl flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
+                className="h-full w-full min-h-[46px] sm:min-h-[52px] rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white font-bold text-xl sm:text-2xl flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
                 title="Multiplicação"
               >
                 ×
@@ -571,7 +571,7 @@ export const MathKeyboard: React.FC<MathKeyboardProps> = ({
               <button
                 type="button"
                 onClick={() => insertSmartExponent('2')}
-                className="h-12 sm:h-14 md:h-15 rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white font-medium flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
+                className="h-full w-full min-h-[46px] sm:min-h-[52px] rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white font-medium flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
                 title="Ao Quadrado (x²)"
               >
                 <div className="flex items-start">
@@ -583,7 +583,7 @@ export const MathKeyboard: React.FC<MathKeyboardProps> = ({
               <button
                 type="button"
                 onClick={() => insertSmartExponent()}
-                className="h-12 sm:h-14 md:h-15 rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white font-bold text-base sm:text-lg flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
+                className="h-full w-full min-h-[46px] sm:min-h-[52px] rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white font-bold text-base sm:text-lg flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
                 title="Potência genérica (xʸ)"
               >
                 xʸ
@@ -592,21 +592,21 @@ export const MathKeyboard: React.FC<MathKeyboardProps> = ({
               <button
                 type="button"
                 onClick={() => insertTextAtCursor('1')}
-                className="h-12 sm:h-14 md:h-15 rounded-2xl bg-slate-800/90 hover:bg-slate-700 text-white font-bold text-xl sm:text-2xl flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none shadow-sm"
+                className="h-full w-full min-h-[46px] sm:min-h-[52px] rounded-2xl bg-slate-800/90 hover:bg-slate-700 text-white font-bold text-xl sm:text-2xl flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none shadow-sm"
               >
                 1
               </button>
               <button
                 type="button"
                 onClick={() => insertTextAtCursor('2')}
-                className="h-12 sm:h-14 md:h-15 rounded-2xl bg-slate-800/90 hover:bg-slate-700 text-white font-bold text-xl sm:text-2xl flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none shadow-sm"
+                className="h-full w-full min-h-[46px] sm:min-h-[52px] rounded-2xl bg-slate-800/90 hover:bg-slate-700 text-white font-bold text-xl sm:text-2xl flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none shadow-sm"
               >
                 2
               </button>
               <button
                 type="button"
                 onClick={() => insertTextAtCursor('3')}
-                className="h-12 sm:h-14 md:h-15 rounded-2xl bg-slate-800/90 hover:bg-slate-700 text-white font-bold text-xl sm:text-2xl flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none shadow-sm"
+                className="h-full w-full min-h-[46px] sm:min-h-[52px] rounded-2xl bg-slate-800/90 hover:bg-slate-700 text-white font-bold text-xl sm:text-2xl flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none shadow-sm"
               >
                 3
               </button>
@@ -614,7 +614,7 @@ export const MathKeyboard: React.FC<MathKeyboardProps> = ({
               <button
                 type="button"
                 onClick={() => insertTextAtCursor(' - ')}
-                className="h-12 sm:h-14 md:h-15 rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white font-bold text-xl sm:text-2xl flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
+                className="h-full w-full min-h-[46px] sm:min-h-[52px] rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white font-bold text-xl sm:text-2xl flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
                 title="Subtração"
               >
                 −
@@ -624,7 +624,7 @@ export const MathKeyboard: React.FC<MathKeyboardProps> = ({
               <button
                 type="button"
                 onClick={() => insertTextAtCursor('x')}
-                className="h-12 sm:h-14 md:h-15 rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white font-bold italic font-serif text-lg sm:text-2xl flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
+                className="h-full w-full min-h-[46px] sm:min-h-[52px] rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white font-bold italic font-serif text-lg sm:text-2xl flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
                 title="Variável x"
               >
                 x
@@ -633,7 +633,7 @@ export const MathKeyboard: React.FC<MathKeyboardProps> = ({
               <button
                 type="button"
                 onClick={() => insertTextAtCursor('\\pi')}
-                className="h-12 sm:h-14 md:h-15 rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white font-serif text-lg sm:text-2xl flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
+                className="h-full w-full min-h-[46px] sm:min-h-[52px] rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white font-serif text-lg sm:text-2xl flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
                 title="Constante Pi (π)"
               >
                 π
@@ -642,7 +642,7 @@ export const MathKeyboard: React.FC<MathKeyboardProps> = ({
               <button
                 type="button"
                 onClick={() => insertTextAtCursor('0')}
-                className="h-12 sm:h-14 md:h-15 rounded-2xl bg-slate-800/90 hover:bg-slate-700 text-white font-bold text-xl sm:text-2xl flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none shadow-sm"
+                className="h-full w-full min-h-[46px] sm:min-h-[52px] rounded-2xl bg-slate-800/90 hover:bg-slate-700 text-white font-bold text-xl sm:text-2xl flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none shadow-sm"
               >
                 0
               </button>
@@ -650,7 +650,7 @@ export const MathKeyboard: React.FC<MathKeyboardProps> = ({
               <button
                 type="button"
                 onClick={() => insertTextAtCursor(',')}
-                className="h-12 sm:h-14 md:h-15 rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white font-bold text-xl sm:text-2xl flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
+                className="h-full w-full min-h-[46px] sm:min-h-[52px] rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white font-bold text-xl sm:text-2xl flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
                 title="Vírgula decimal"
               >
                 ,
@@ -659,7 +659,7 @@ export const MathKeyboard: React.FC<MathKeyboardProps> = ({
               <button
                 type="button"
                 onClick={() => insertTextAtCursor(' + ')}
-                className="h-12 sm:h-14 md:h-15 rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white font-bold text-xl sm:text-2xl flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
+                className="h-full w-full min-h-[46px] sm:min-h-[52px] rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white font-bold text-xl sm:text-2xl flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
                 title="Adição"
               >
                 +
@@ -673,7 +673,7 @@ export const MathKeyboard: React.FC<MathKeyboardProps> = ({
                   onSolve();
                 }}
                 disabled={isLoading}
-                className="h-12 sm:h-14 md:h-15 rounded-2xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-bold text-2xl sm:text-3xl flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none shadow-lg shadow-rose-600/30 ring-1 ring-rose-400"
+                className="h-full w-full min-h-[46px] sm:min-h-[52px] rounded-2xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-bold text-2xl sm:text-3xl flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none shadow-lg shadow-rose-600/30 ring-1 ring-rose-400"
                 title="Calcular / Resolver"
               >
                 {isLoading ? (
@@ -688,8 +688,8 @@ export const MathKeyboard: React.FC<MathKeyboardProps> = ({
 
         {/* B. INEQUALITIES & RELATIONS TAB */}
         {activeCategory === 'inequalities' && (
-          <div className="space-y-3">
-            <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+          <div className="flex-1 flex flex-col min-h-0">
+            <div className="flex-1 grid grid-cols-4 sm:grid-cols-6 auto-rows-fr gap-1.5 sm:gap-2 min-h-0">
               {[
                 { label: '<', insert: ' < ', tip: 'Menor que' },
                 { label: '>', insert: ' > ', tip: 'Maior que' },
@@ -720,7 +720,7 @@ export const MathKeyboard: React.FC<MathKeyboardProps> = ({
                   key={idx}
                   type="button"
                   onClick={() => insertTextAtCursor(btn.insert)}
-                  className="h-11 sm:h-12 md:h-13 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white font-bold text-sm sm:text-base flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
+                  className="h-full min-h-[44px] sm:min-h-[48px] rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white font-bold text-sm sm:text-base flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
                   title={btn.tip}
                 >
                   {btn.label}
@@ -732,7 +732,7 @@ export const MathKeyboard: React.FC<MathKeyboardProps> = ({
 
         {/* B. FUNCTIONS TAB: f(x) e / log ln */}
         {activeCategory === 'functions' && (
-          <div className="grid grid-cols-4 sm:grid-cols-6 gap-1.5 sm:gap-2">
+          <div className="flex-1 grid grid-cols-4 sm:grid-cols-6 auto-rows-fr gap-1.5 sm:gap-2 min-h-0">
             {[
               { label: 'f(x)', insert: 'f(x)' },
               { label: 'g(x)', insert: 'g(x)' },
@@ -763,7 +763,7 @@ export const MathKeyboard: React.FC<MathKeyboardProps> = ({
                 key={idx}
                 type="button"
                 onClick={() => (btn.action ? btn.action() : insertTextAtCursor(btn.insert || ''))}
-                className="h-11 sm:h-12 md:h-13 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white font-bold text-sm sm:text-base flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
+                className="h-full min-h-[44px] sm:min-h-[48px] rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white font-bold text-sm sm:text-base flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
               >
                 {btn.label}
               </button>
@@ -773,7 +773,7 @@ export const MathKeyboard: React.FC<MathKeyboardProps> = ({
 
         {/* C. TRIGONOMETRY TAB: sin cos / tan cot */}
         {activeCategory === 'trigonometry' && (
-          <div className="grid grid-cols-4 sm:grid-cols-6 gap-1.5 sm:gap-2">
+          <div className="flex-1 grid grid-cols-4 sm:grid-cols-6 auto-rows-fr gap-1.5 sm:gap-2 min-h-0">
             {[
               { label: 'sin', insert: '\\sin(' },
               { label: 'cos', insert: '\\cos(' },
@@ -798,7 +798,7 @@ export const MathKeyboard: React.FC<MathKeyboardProps> = ({
                 key={idx}
                 type="button"
                 onClick={() => insertTextAtCursor(btn.insert)}
-                className="h-11 sm:h-12 md:h-13 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white font-bold text-sm sm:text-base flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
+                className="h-full min-h-[44px] sm:min-h-[48px] rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white font-bold text-sm sm:text-base flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
               >
                 {btn.label}
               </button>
@@ -808,7 +808,7 @@ export const MathKeyboard: React.FC<MathKeyboardProps> = ({
 
         {/* D. CALCULUS TAB: lim dx / ∫ ∑ ∞ */}
         {activeCategory === 'calculus' && (
-          <div className="grid grid-cols-4 sm:grid-cols-6 gap-1.5 sm:gap-2">
+          <div className="flex-1 grid grid-cols-4 sm:grid-cols-6 auto-rows-fr gap-1.5 sm:gap-2 min-h-0">
             {[
               { label: 'lim', insert: '\\lim_{x \\to 0} ' },
               { label: 'd/dx', insert: '\\frac{d}{dx} ' },
@@ -831,7 +831,7 @@ export const MathKeyboard: React.FC<MathKeyboardProps> = ({
                 key={idx}
                 type="button"
                 onClick={() => insertTextAtCursor(btn.insert)}
-                className="h-11 sm:h-12 md:h-13 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white font-bold text-sm sm:text-base flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
+                className="h-full min-h-[44px] sm:min-h-[48px] rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white font-bold text-sm sm:text-base flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
               >
                 {btn.label}
               </button>
@@ -841,20 +841,20 @@ export const MathKeyboard: React.FC<MathKeyboardProps> = ({
 
         {/* E. ALPHABETIC (abc) TAB */}
         {activeCategory === 'alpha' && (
-          <div className="space-y-2">
-            <div className="grid grid-cols-7 sm:grid-cols-10 gap-1.5 sm:gap-2">
+          <div className="flex-1 flex flex-col justify-between gap-2 min-h-0">
+            <div className="flex-1 grid grid-cols-7 sm:grid-cols-10 auto-rows-fr gap-1.5 sm:gap-2 min-h-0">
               {'abcdefghijklmnopqrstuvwxyz'.split('').map((char) => (
                 <button
                   key={char}
                   type="button"
                   onClick={() => insertTextAtCursor(char)}
-                  className="h-11 sm:h-12 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white font-mono text-base sm:text-lg flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
+                  className="h-full min-h-[40px] sm:min-h-[46px] rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white font-mono text-base sm:text-lg flex items-center justify-center active:scale-95 transition-all cursor-pointer select-none"
                 >
                   {char}
                 </button>
               ))}
             </div>
-            <div className="flex justify-end pt-1">
+            <div className="flex justify-end pt-1 shrink-0">
               <button
                 type="button"
                 onClick={() => setActiveCategory('basic')}

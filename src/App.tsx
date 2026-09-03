@@ -457,7 +457,7 @@ export default function App() {
   ];
 
   return (
-    <div ref={appRootRef} className={`min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col antialiased selection:bg-indigo-500 selection:text-white w-full max-w-full overflow-x-hidden transition-colors duration-200 ${isFullscreen ? 'fixed inset-0 z-[9999] overflow-y-auto' : ''}`}>
+    <div ref={appRootRef} className={`min-h-screen min-h-[100dvh] bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col antialiased selection:bg-indigo-500 selection:text-white w-full max-w-full overflow-x-hidden transition-colors duration-200 ${isFullscreen ? 'fixed inset-0 z-[9999] overflow-y-auto' : ''}`}>
       <PWAInstallPrompt />
       {/* Top Header Bar */}
       <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-2.5 sm:px-4 py-2 sm:py-2.5 w-full max-w-full transition-colors duration-200">
@@ -589,10 +589,10 @@ export default function App() {
       </header>
 
       {/* Main Container */}
-      <main className="flex-1 flex flex-col max-w-4xl w-full mx-auto p-2.5 sm:p-4 md:p-6 space-y-4 min-w-0 overflow-x-hidden">
+      <main className="flex-1 flex flex-col max-w-4xl w-full mx-auto p-2 sm:p-3.5 md:p-6 gap-3 sm:gap-4 min-w-0 overflow-x-hidden">
         {/* ERROR NOTIFICATION */}
         {error && (
-          <div className="p-3.5 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/50 text-red-800 dark:text-red-200 text-xs sm:text-sm flex items-center justify-between gap-3 animate-fade-in">
+          <div className="p-3.5 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/50 text-red-800 dark:text-red-200 text-xs sm:text-sm flex items-center justify-between gap-3 animate-fade-in shrink-0">
             <div className="flex items-center gap-2">
               <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-500 dark:text-red-400 shrink-0" />
               <span>{error}</span>
@@ -609,34 +609,36 @@ export default function App() {
 
         {/* 1. TELA PRINCIPAL: CALCULADORA ESTILO PHOTOMATH COM FRAÇÃO VERTICAL & TECLADO */}
         {currentMenu === 'solver' && (
-          <div className="flex-1 flex flex-col justify-between space-y-3 sm:space-y-4 animate-fade-in w-full max-w-full">
+          <div className="flex-1 flex flex-col justify-between gap-2.5 sm:gap-3.5 animate-fade-in w-full max-w-full min-h-0">
             {/* Photomath Visual Display with Live Calculation & Alternative Forms */}
-            <PhotomathInputDisplay
-              input={inputProblem}
-              onInputChange={setInputProblem}
-              onClear={() => {
-                setInputProblem('');
-                if (textareaRef.current) {
-                  try {
-                    textareaRef.current.focus({ preventScroll: true });
-                  } catch {}
-                }
-              }}
-              onShowSolution={() => handleSolve({ openNotebookDirectly: true })}
-              isLoading={isLoading}
-              useNativeKeyboard={useNativeKeyboard}
-              onToggleNativeKeyboard={() => {
-                const next = !useNativeKeyboard;
-                setUseNativeKeyboard(next);
-                if (next) {
-                  setTimeout(() => textareaRef.current?.focus(), 50);
-                }
-              }}
-              textareaRef={textareaRef}
-            />
+            <div className="shrink-0 w-full">
+              <PhotomathInputDisplay
+                input={inputProblem}
+                onInputChange={setInputProblem}
+                onClear={() => {
+                  setInputProblem('');
+                  if (textareaRef.current) {
+                    try {
+                      textareaRef.current.focus({ preventScroll: true });
+                    } catch {}
+                  }
+                }}
+                onShowSolution={() => handleSolve({ openNotebookDirectly: true })}
+                isLoading={isLoading}
+                useNativeKeyboard={useNativeKeyboard}
+                onToggleNativeKeyboard={() => {
+                  const next = !useNativeKeyboard;
+                  setUseNativeKeyboard(next);
+                  if (next) {
+                    setTimeout(() => textareaRef.current?.focus(), 50);
+                  }
+                }}
+                textareaRef={textareaRef}
+              />
+            </div>
 
             {/* Photomath Scientific Keyboard (Extended to fill available space) */}
-            <div className="w-full max-w-full flex-1 flex flex-col">
+            <div className="w-full max-w-full flex-1 flex flex-col min-h-0">
               <MathKeyboard
                 input={inputProblem}
                 onInputChange={setInputProblem}
