@@ -143,10 +143,16 @@ DIRETRIZES DE RESOLUÇÃO (100% Passo a Passo no Estilo Photomath):
   * "afterExpression": A expressão matemática DEPOIS da operação, com o resultado transformado destacado em vermelho LaTeX usando \\mathbf{\\color{#e11d48}{termo}} (ex: "\\mathbf{\\color{#e11d48}{2x - 6}} - 4(x-1) = -6").
   * "subSteps": Se a operação puder ser dividida em mini-etapas (ex: distribuir o 1º termo e depois o 2º termo), forneça a lista de subSteps com beforeLatex, afterLatex e explanation.
   * "mathExpression": A expressão matemática geral simplificada deste passo.
-- REGRAS ESTRITAS DE FORMATAÇÃO E CIFRÃO ($):
-  * NUNCA inclua o símbolo de cifrão '$' ou '$$' em nenhum texto, explicação, título, dica ou resumo.
-  * Todas as fórmulas matemáticas em 'mathExpression', 'beforeExpression', 'afterExpression', 'exact', 'approximate', 'latex' devem ser escritas em LaTeX PURO e DIRETO, SEM cifrões ao redor (ex: '\\frac{-b \\pm \\sqrt{\\Delta}}{2a}', '2x - 6 = 0', 'x_1 = 3, \\, x_2 = 1').
-  * Escreva as explicações e títulos em linguagem natural e fluida, sem inserir caracteres $ soltos.
+- REGRAS ESTRITAS DE FORMATAÇÃO E LEGIBILIDADE PARA O USUÁRIO:
+  * NÚMEROS MISTOS (FRAÇÕES MISTAS): Um número misto no formato $A\frac{B}{C}$ (ex: $4\frac{7}{4}$, $2\frac{1}{3}$) representa a soma da parte inteira com a fração: $A + \frac{B}{C} = \frac{A \cdot C + B}{C}$. NUNCA confunda com multiplicação! Mostre o passo a passo completo da conversão:
+    1. Identificar o inteiro $A$, numerador $B$ e denominador $C$.
+    2. Multiplicar o inteiro pelo denominador ($A \cdot C$).
+    3. Somar o numerador ($A \cdot C + B$).
+    4. Escrever a fração imprópria ($\frac{A \cdot C + B}{C}$) e simplificar se possível.
+    5. Indicar a forma decimal (ex: $5,75$) e forma mista normalizada se $B \ge C$ (ex: $4\frac{7}{4} = 5\frac{3}{4}$).
+  * LEGIBILIDADE HUMANA TOTAL: O usuário precisa ler e entender perfeitamente cada explicação ("explanation"), título ("title"), dica ("tipOrRule") e resumo ("summary"). NUNCA deixe comandos ou códigos de computador/LaTeX soltos no meio do texto sem formatação (como '\\frac{a}{b}', '\\cdot', '\\sqrt{}').
+  * Se for citar qualquer termo, número fracionário ou fórmula matemática no meio de uma frase explicativa, envolva SEMPRE entre cifrões simples: $...$ (ex: '$4\\frac{7}{4}$', '$\\frac{A \\cdot C + B}{C}$', '$x^2$', '$\\Delta = 0$'), para que o aplicativo renderize como equação matemática visual perfeita em vez de texto bruto de programação, OU use português natural fluente (ex: 'fração 7/4', 'multiplicando 4 por 4').
+  * Nas propriedades estritamente matemáticas ('mathExpression', 'beforeExpression', 'afterExpression', 'exact', 'approximate', 'latex'): forneça o LaTeX direto SEM cifrões ao redor (ex: '\\frac{-b \\pm \\sqrt{\\Delta}}{2a}', '2x - 6 = 0', 'x_1 = 3, \\, x_2 = 1').
 - Sempre declare as fórmulas utilizadas com nomes e termos matemáticos precisos em LaTeX.
 - Para problemas de geometria ou sólidos, extraia todos os dados (raio, altura, aresta, ângulos), mencione a figura ou sólido exato e mostre a substituição numérica em cada passo.
 - Forneça sempre o valor exato (com pi, radicais, frações simplificadas) e a aproximação decimal quando conveniente.
@@ -342,7 +348,8 @@ Por favor, resolva o mesmo problema usando um MÉTODO OU CAMINHO ALTERNATIVO (po
       id: 'sol_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
       timestamp: Date.now(),
       originalInput: problem || (image ? '[Exercício de Foto / Câmera]' : ''),
-      imageUrl: image ? image.substring(0, 100) + '...' : undefined,
+      imageUrl: image ? image : undefined,
+      detectedFromImage: !!image,
       ...parsedData,
     };
 

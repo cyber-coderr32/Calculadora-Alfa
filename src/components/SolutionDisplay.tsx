@@ -182,7 +182,9 @@ export const SolutionDisplay: React.FC<SolutionDisplayProps> = ({
             <h2 className="text-xl md:text-2xl font-extrabold text-white tracking-tight">
               {solution.problemTitle}
             </h2>
-            <p className="text-sm text-slate-300 mt-1">{solution.summary}</p>
+            <div className="text-sm text-slate-300 mt-1">
+              <MixedTextRenderer text={solution.summary} />
+            </div>
           </div>
 
           {/* Action Toolbar */}
@@ -426,9 +428,9 @@ export const SolutionDisplay: React.FC<SolutionDisplayProps> = ({
                     {step.tipOrRule && (
                       <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-950/20 border border-amber-800/30 text-amber-200/90 text-xs">
                         <Lightbulb className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                        <div>
+                        <div className="flex-1">
                           <span className="font-bold text-amber-300 mr-1">Regra / Dica:</span>
-                          <span>{step.tipOrRule}</span>
+                          <MixedTextRenderer text={step.tipOrRule} inline />
                         </div>
                       </div>
                     )}

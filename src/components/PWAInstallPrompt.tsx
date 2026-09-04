@@ -44,7 +44,7 @@ export function PWAInstallPrompt() {
         <Download className="h-5 w-5" aria-hidden="true" />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-bold text-slate-900 dark:text-white">Instalar α Alfa</p>
+        <p className="text-sm font-bold text-slate-900 dark:text-white">Instalar Alfa</p>
         <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">Use a calculadora como um aplicativo.</p>
       </div>
       <button type="button" onClick={install} className="rounded-xl bg-indigo-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-indigo-700" aria-label="Instalar aplicativo">Instalar</button>

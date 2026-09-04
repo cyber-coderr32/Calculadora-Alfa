@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { MathRenderer } from './MathRenderer';
 import { MathSolution } from '../types';
 import { solveOffline } from '../engine/offlineSolver';
-import { X, ArrowRight, Sparkles, CheckCircle2, ChevronRight, CornerDownRight, Trash2 } from 'lucide-react';
+import { X, ArrowRight, Sparkles, CheckCircle2, ChevronRight, CornerDownRight, Trash2, Camera, Upload, Keyboard } from 'lucide-react';
 
 interface PhotomathInputDisplayProps {
   input: string;
@@ -11,13 +11,18 @@ interface PhotomathInputDisplayProps {
   isLoading: boolean;
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
   onInputChange: (val: string) => void;
+  useNativeKeyboard?: boolean;
+  onToggleNativeKeyboard?: () => void;
+  onOpenScanner?: () => void;
 }
 
 interface FractionSlot {
   fractionIndex: number;
+  wholeRange?: { start: number; end: number; content: string };
   numRange: { start: number; end: number; content: string };
   denRange: { start: number; end: number; content: string };
   fullRange: { start: number; end: number };
+  isMixed?: boolean;
 }
 
 interface SqrtSlot {
@@ -77,7 +82,44 @@ function parseInteractiveTokens(input: string): TokenSegment[] {
   let expCount = 0;
 
   while (i < input.length) {
-    // 1. Check for \frac{num}{den}
+    // 0. Check for Mixed Fraction e.g. 2\frac{1}{3} or 12 \frac{5}{8}
+    const mixedMatch = input.substring(i).match(/^([0-9]+)\s*\\frac\{/);
+    if (mixedMatch) {
+      const wholeContent = mixedMatch[1];
+      const wholeStart = i;
+      const wholeEnd = i + wholeContent.length;
+      const fracOffset = input.substring(i).indexOf('\\frac{');
+      const fracStart = i + fracOffset;
+      const openNum = fracStart + 5;
+      const closeNum = findMatchingBrace(input, openNum);
+      if (closeNum !== -1 && input[closeNum + 1] === '{') {
+        const openDen = closeNum + 1;
+        const closeDen = findMatchingBrace(input, openDen);
+        if (closeDen !== -1) {
+          fracCount++;
+          const numContent = input.substring(openNum + 1, closeNum);
+          const denContent = input.substring(openDen + 1, closeDen);
+          tokens.push({
+            type: 'fraction',
+            raw: input.substring(i, closeDen + 1),
+            start: i,
+            end: closeDen + 1,
+            fraction: {
+              fractionIndex: fracCount,
+              isMixed: true,
+              wholeRange: { start: wholeStart, end: wholeEnd, content: wholeContent },
+              numRange: { start: openNum + 1, end: closeNum, content: numContent },
+              denRange: { start: openDen + 1, end: closeDen, content: denContent },
+              fullRange: { start: i, end: closeDen + 1 },
+            },
+          });
+          i = closeDen + 1;
+          continue;
+        }
+      }
+    }
+
+    // 1. Check for standard \frac{num}{den}
     if (input.startsWith('\\frac{', i)) {
       const openNum = i + 5; // index of '{'
       const closeNum = findMatchingBrace(input, openNum);
@@ -97,6 +139,7 @@ function parseInteractiveTokens(input: string): TokenSegment[] {
               end: closeDen + 1,
               fraction: {
                 fractionIndex: fracCount,
+                isMixed: false,
                 numRange: { start: openNum + 1, end: closeNum, content: numContent },
                 denRange: { start: openDen + 1, end: closeDen, content: denContent },
                 fullRange: { start: i, end: closeDen + 1 },
@@ -316,6 +359,7 @@ function parseInteractiveTokens(input: string): TokenSegment[] {
     while (
       i < input.length &&
       !input.startsWith('\\frac{', i) &&
+      !input.substring(i).match(/^[0-9]+\s*\\frac\{/) &&
       !input.startsWith('\\sqrt{', i) &&
       input[i] !== '^' &&
       !input.substring(i).match(/^([0-9a-zA-Z\.]+)\^/) &&
@@ -343,6 +387,9 @@ export const PhotomathInputDisplay: React.FC<PhotomathInputDisplayProps> = ({
   isLoading,
   textareaRef,
   onInputChange,
+  useNativeKeyboard,
+  onToggleNativeKeyboard,
+  onOpenScanner,
 }) => {
   const [cursorPos, setCursorPos] = useState<number>(input.length);
 
@@ -360,6 +407,7 @@ export const PhotomathInputDisplay: React.FC<PhotomathInputDisplayProps> = ({
   const setCursorToPosition = (targetPos: number, selectAllRange?: { start: number; end: number }) => {
     if (textareaRef.current) {
       try {
+        textareaRef.current.focus({ preventScroll: true });
         if (selectAllRange && selectAllRange.end >= selectAllRange.start) {
           textareaRef.current.setSelectionRange(selectAllRange.start, selectAllRange.end);
           setCursorPos(selectAllRange.end);
@@ -457,13 +505,101 @@ export const PhotomathInputDisplay: React.FC<PhotomathInputDisplayProps> = ({
         spellCheck={false}
       />
 
+      {/* TOP HEADER TOOLBAR: Quick Camera Scanner trigger & Input Indicator */}
+      <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-slate-100 dark:border-slate-800/80">
+        <div className="flex items-center gap-1.5">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+            Expressão / Equação
+          </span>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          {onToggleNativeKeyboard && (
+            <button
+              type="button"
+              onClick={onToggleNativeKeyboard}
+              className={`px-2 py-1 rounded-xl text-xs font-semibold flex items-center gap-1 border transition-all cursor-pointer select-none ${
+                useNativeKeyboard
+                  ? 'bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border-indigo-300 dark:border-indigo-700'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+              }`}
+              title="Alternar entre Teclado Matemático Customizado e Teclado do Sistema"
+            >
+              <Keyboard className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{useNativeKeyboard ? 'Teclado Dispositivo' : 'Teclado Matemático'}</span>
+            </button>
+          )}
+
+          {onOpenScanner && (
+            <button
+              type="button"
+              id="btn-input-open-scanner"
+              onClick={onOpenScanner}
+              className="px-2.5 py-1 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer select-none active:scale-95 shadow-xs"
+              title="Abrir Câmera para Varredura do Caderno ou Upload de Foto"
+            >
+              <Camera className="w-3.5 h-3.5" />
+              <span>Escanear Caderno / Foto</span>
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* TOP QUICK JUMP BAR: Instant 1-tap navigation for Fractions, Exponents, and Roots on touchscreen */}
       {(fractionList.length > 0 || exponentList.length > 0 || sqrtList.length > 0) && (
         <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none animate-fade-in">
-          {/* Fractions */}
+          {/* Fractions & Mixed Numbers */}
           {fractionList.map((frac, idx) => {
+            const isWholeActive = frac.isMixed && frac.wholeRange && cursorPos >= frac.wholeRange.start && cursorPos <= frac.wholeRange.end;
             const isNumActive = cursorPos >= frac.numRange.start && cursorPos <= frac.numRange.end;
             const isDenActive = cursorPos >= frac.denRange.start && cursorPos <= frac.denRange.end;
+
+            if (frac.isMixed && frac.wholeRange) {
+              return (
+                <div key={`f-${idx}`} className="flex items-center gap-1 bg-amber-50 dark:bg-amber-950/40 px-2 py-1 rounded-xl border border-amber-300 dark:border-amber-800/60 shrink-0">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+                    Misto:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setCursorToPosition(frac.wholeRange!.end, { start: frac.wholeRange!.start, end: frac.wholeRange!.end })}
+                    className={`px-2 py-0.5 rounded-lg text-xs font-bold transition-all cursor-pointer select-none ${
+                      isWholeActive
+                        ? 'bg-amber-600 text-white shadow-sm ring-1 ring-amber-400'
+                        : 'bg-white dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-amber-900 dark:text-amber-300 border border-amber-200 dark:border-transparent'
+                    }`}
+                    title="Editar Parte Inteira do número misto"
+                  >
+                    Inteiro: {frac.wholeRange.content || '□'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCursorToPosition(frac.numRange.end, { start: frac.numRange.start, end: frac.numRange.end })}
+                    className={`px-2 py-0.5 rounded-lg text-xs font-bold transition-all cursor-pointer select-none ${
+                      isNumActive
+                        ? 'bg-rose-600 text-white shadow-sm ring-1 ring-rose-400'
+                        : 'bg-white dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-transparent'
+                    }`}
+                    title="Editar Numerador (superior)"
+                  >
+                    Num: {frac.numRange.content || '□'}
+                  </button>
+                  <span className="text-slate-400 dark:text-slate-600 font-bold">/</span>
+                  <button
+                    type="button"
+                    onClick={() => setCursorToPosition(frac.denRange.end, { start: frac.denRange.start, end: frac.denRange.end })}
+                    className={`px-2 py-0.5 rounded-lg text-xs font-bold transition-all cursor-pointer select-none ${
+                      isDenActive
+                        ? 'bg-rose-600 text-white shadow-sm ring-1 ring-rose-400'
+                        : 'bg-white dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-rose-700 dark:text-rose-300 border border-slate-200 dark:border-transparent'
+                    }`}
+                    title="Editar Denominador (inferior)"
+                  >
+                    Den: {frac.denRange.content || '□'}
+                  </button>
+                </div>
+              );
+            }
 
             return (
               <div key={`f-${idx}`} className="flex items-center gap-1 bg-slate-100 dark:bg-slate-950 px-2 py-1 rounded-xl border border-slate-200 dark:border-slate-800 shrink-0">
@@ -609,68 +745,98 @@ export const PhotomathInputDisplay: React.FC<PhotomathInputDisplayProps> = ({
               {tokens.map((token, idx) => {
                 if (token.type === 'fraction' && token.fraction) {
                   const frac = token.fraction;
+                  const isWholeActive = frac.isMixed && frac.wholeRange && cursorPos >= frac.wholeRange.start && cursorPos <= frac.wholeRange.end;
                   const isNumActive = cursorPos >= frac.numRange.start && cursorPos <= frac.numRange.end;
                   const isDenActive = cursorPos >= frac.denRange.start && cursorPos <= frac.denRange.end;
 
                   return (
                     <div
                       key={idx}
-                      className="inline-flex flex-col items-center justify-center mx-1 my-0.5 align-middle select-none group/frac"
+                      className="inline-flex items-center mx-1 my-0.5 align-middle select-none group/frac"
                     >
-                      {/* Clickable NUMERATOR slot */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setCursorToPosition(frac.numRange.end);
-                        }}
-                        className={`min-w-[28px] px-1.5 py-0.5 rounded-md font-sans text-center transition-all cursor-pointer flex items-center justify-center ${
-                          isNumActive
-                            ? 'bg-rose-100 dark:bg-rose-950/80 border-2 border-rose-500 text-rose-950 dark:text-white ring-2 ring-rose-500/40 shadow-sm'
-                            : frac.numRange.content
-                            ? 'hover:bg-slate-200/80 dark:hover:bg-slate-800/80 text-slate-900 dark:text-white'
-                            : 'border border-dashed border-rose-400/80 bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-300 animate-pulse min-h-[26px]'
-                        }`}
-                        title="Clique para editar o Numerador"
-                      >
-                        {frac.numRange.content ? (
-                          <span className="font-sans leading-none">{frac.numRange.content}</span>
-                        ) : (
-                          <span className="w-3.5 h-3.5 border border-dashed border-rose-400 rounded-xs inline-block" />
-                        )}
-                        {isNumActive && (
-                          <span className="inline-block w-[2.5px] h-5 bg-rose-500 rounded-full animate-pulse ml-0.5" />
-                        )}
-                      </button>
+                      {/* Optional WHOLE NUMBER slot for Mixed Numbers */}
+                      {frac.isMixed && frac.wholeRange && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCursorToPosition(frac.wholeRange!.end, { start: frac.wholeRange!.start, end: frac.wholeRange!.end });
+                          }}
+                          className={`min-w-[28px] px-2 py-0.5 mr-1.5 rounded-lg font-sans text-center transition-all cursor-pointer flex items-center justify-center font-bold text-lg sm:text-xl md:text-2xl ${
+                            isWholeActive
+                              ? 'bg-amber-100 dark:bg-amber-950/80 border-2 border-amber-500 text-amber-950 dark:text-white ring-2 ring-amber-500/40 shadow-sm'
+                              : 'hover:bg-slate-200/80 dark:hover:bg-slate-800/80 text-slate-900 dark:text-white'
+                          }`}
+                          title="Clique para editar a Parte Inteira do número misto"
+                        >
+                          {frac.wholeRange.content ? (
+                            <span className="font-sans leading-none">{frac.wholeRange.content}</span>
+                          ) : (
+                            <span className="w-4 h-5 border border-dashed border-amber-400 rounded-xs inline-block" />
+                          )}
+                          {isWholeActive && (
+                            <span className="inline-block w-[2.5px] h-5 bg-amber-500 rounded-full animate-pulse ml-0.5" />
+                          )}
+                        </button>
+                      )}
 
-                      {/* Crisp Fraction Line */}
-                      <div className="w-full min-w-[28px] h-[2.5px] bg-slate-800 dark:bg-slate-300 rounded-full my-1 shadow-sm" />
+                      {/* Vertical Fraction */}
+                      <div className="inline-flex flex-col items-center justify-center">
+                        {/* Clickable NUMERATOR slot */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCursorToPosition(frac.numRange.end, { start: frac.numRange.start, end: frac.numRange.end });
+                          }}
+                          className={`min-w-[28px] px-1.5 py-0.5 rounded-md font-sans text-center transition-all cursor-pointer flex items-center justify-center ${
+                            isNumActive
+                              ? 'bg-rose-100 dark:bg-rose-950/80 border-2 border-rose-500 text-rose-950 dark:text-white ring-2 ring-rose-500/40 shadow-sm'
+                              : frac.numRange.content
+                              ? 'hover:bg-slate-200/80 dark:hover:bg-slate-800/80 text-slate-900 dark:text-white'
+                              : 'border border-dashed border-rose-400/80 bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-300 animate-pulse min-h-[26px]'
+                          }`}
+                          title="Clique para editar o Numerador"
+                        >
+                          {frac.numRange.content ? (
+                            <span className="font-sans leading-none">{frac.numRange.content}</span>
+                          ) : (
+                            <span className="w-3.5 h-3.5 border border-dashed border-rose-400 rounded-xs inline-block" />
+                          )}
+                          {isNumActive && (
+                            <span className="inline-block w-[2.5px] h-5 bg-rose-500 rounded-full animate-pulse ml-0.5" />
+                          )}
+                        </button>
 
-                      {/* Clickable DENOMINATOR slot */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setCursorToPosition(frac.denRange.end);
-                        }}
-                        className={`min-w-[28px] px-1.5 py-0.5 rounded-md font-sans text-center transition-all cursor-pointer flex items-center justify-center ${
-                          isDenActive
-                            ? 'bg-rose-100 dark:bg-rose-950/80 border-2 border-rose-500 text-rose-950 dark:text-white ring-2 ring-rose-500/40 shadow-sm'
-                            : frac.denRange.content
-                            ? 'hover:bg-slate-200/80 dark:hover:bg-slate-800/80 text-slate-900 dark:text-white'
-                            : 'border-2 border-dashed border-rose-500 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-300 animate-pulse min-h-[28px] ring-2 ring-rose-500/30'
-                        }`}
-                        title="Clique aqui para colocar o Denominador"
-                      >
-                        {frac.denRange.content ? (
-                          <span className="font-sans leading-none">{frac.denRange.content}</span>
-                        ) : (
-                          <span className="w-4 h-4 border-2 border-dashed border-rose-400 rounded-xs inline-block" />
-                        )}
-                        {isDenActive && (
-                          <span className="inline-block w-[2.5px] h-5 bg-rose-500 rounded-full animate-pulse ml-0.5" />
-                        )}
-                      </button>
+                        {/* Crisp Fraction Line */}
+                        <div className="w-full min-w-[28px] h-[2.5px] bg-slate-800 dark:bg-slate-300 rounded-full my-1 shadow-sm" />
+
+                        {/* Clickable DENOMINATOR slot */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCursorToPosition(frac.denRange.end, { start: frac.denRange.start, end: frac.denRange.end });
+                          }}
+                          className={`min-w-[28px] px-1.5 py-0.5 rounded-md font-sans text-center transition-all cursor-pointer flex items-center justify-center ${
+                            isDenActive
+                              ? 'bg-rose-100 dark:bg-rose-950/80 border-2 border-rose-500 text-rose-950 dark:text-white ring-2 ring-rose-500/40 shadow-sm'
+                              : frac.denRange.content
+                              ? 'hover:bg-slate-200/80 dark:hover:bg-slate-800/80 text-slate-900 dark:text-white'
+                              : 'border-2 border-dashed border-rose-500 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-300 animate-pulse min-h-[28px] ring-2 ring-rose-500/30'
+                          }`}
+                          title="Clique aqui para colocar o Denominador"
+                        >
+                          {frac.denRange.content ? (
+                            <span className="font-sans leading-none">{frac.denRange.content}</span>
+                          ) : (
+                            <span className="w-4 h-4 border-2 border-dashed border-rose-400 rounded-xs inline-block" />
+                          )}
+                          {isDenActive && (
+                            <span className="inline-block w-[2.5px] h-5 bg-rose-500 rounded-full animate-pulse ml-0.5" />
+                          )}
+                        </button>
+                      </div>
                     </div>
                   );
                 }

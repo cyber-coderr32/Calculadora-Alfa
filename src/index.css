@@ -217,3 +217,23 @@
     font-size: 1.1em !important;
   }
 }
+
+/* Scanner Beam and Radar Keyframe */
+@keyframes scanSweep {
+  0% {
+    top: 4%;
+    opacity: 0.85;
+  }
+  50% {
+    top: 94%;
+    opacity: 1;
+  }
+  100% {
+    top: 4%;
+    opacity: 0.85;
+  }
+}
+
+.animate-scan-sweep {
+  animation: scanSweep 2.2s ease-in-out infinite;
+}

@@ -713,7 +713,7 @@ export const HandwrittenNotebookDisplay: React.FC<HandwrittenNotebookDisplayProp
                     {step.stepNumber || index + 1}
                   </span>
                   <span className="font-handwriting text-2xl sm:text-3xl font-extrabold text-indigo-900 dark:text-indigo-200">
-                    {step.title}
+                    <MixedTextRenderer text={step.title} inline />
                   </span>
                 </div>
 
@@ -758,8 +758,11 @@ export const HandwrittenNotebookDisplay: React.FC<HandwrittenNotebookDisplayProp
                           </div>
                         )}
                         {sub.tip && (
-                          <div className="font-handwriting text-base text-amber-700 dark:text-amber-300 mt-1">
-                            💡 {sub.tip}
+                          <div className="font-handwriting text-base text-amber-700 dark:text-amber-300 mt-1 flex items-start gap-1">
+                            <span className="shrink-0">💡</span>
+                            <div className="flex-1">
+                              <MixedTextRenderer text={sub.tip} inline />
+                            </div>
                           </div>
                         )}
                       </div>
@@ -771,9 +774,9 @@ export const HandwrittenNotebookDisplay: React.FC<HandwrittenNotebookDisplayProp
                 {step.tipOrRule && (
                   <div className="my-2 p-3 sm:p-3.5 rounded-xl sticky-note-yellow border border-amber-300/80 text-amber-950 flex items-start gap-2 shadow-md max-w-xl">
                     <Lightbulb className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
-                    <div className="font-handwriting text-lg sm:text-xl leading-snug">
+                    <div className="font-handwriting text-lg sm:text-xl leading-snug flex-1">
                       <span className="font-bold mr-1">Dica do Professor:</span>
-                      <span>{step.tipOrRule}</span>
+                      <MixedTextRenderer text={step.tipOrRule} inline />
                     </div>
                   </div>
                 )}

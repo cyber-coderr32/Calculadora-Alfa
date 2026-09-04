@@ -1062,6 +1062,147 @@ export function solveDerivative(exprStr: string, originalText: string): MathSolu
 }
 
 /**
+ * Dedicated Step-by-Step Mixed Number Converter & Calculator
+ * e.g. 4\frac{7}{4} -> 23/4, 5\frac{3}{4}, 5,75
+ */
+export function solveMixedNumberOffline(whole: number, num: number, den: number, originalInput: string): MathSolution {
+  const isNegative = whole < 0;
+  const absWhole = Math.abs(whole);
+  const mult = absWhole * den;
+  const improperNumerator = mult + num;
+  const finalNum = isNegative ? -improperNumerator : improperNumerator;
+  const finalDen = den;
+
+  const rawFracLatex = `${isNegative ? '-' : ''}\\frac{${improperNumerator}}{${den}}`;
+  const simplified = simplifyFraction(finalNum, finalDen);
+
+  const decimalVal = finalNum / finalDen;
+  const decStr = decimalVal.toLocaleString('pt-BR', { maximumFractionDigits: 4 });
+
+  // Normalized mixed form: e.g. 4\frac{7}{4} has improper 7/4 = 1 + 3/4, so 4 + 1 + 3/4 = 5\frac{3}{4}
+  const normWhole = Math.floor(improperNumerator / den) * (isNegative ? -1 : 1);
+  const normRem = improperNumerator % den;
+  const normMixedLatex = normRem > 0 ? `${normWhole}\\frac{${normRem}}{${den}}` : `${normWhole}`;
+
+  const steps: MathStep[] = [];
+
+  // Step 1: Component identification
+  steps.push({
+    stepNumber: 1,
+    title: `Identificação dos Componentes do Número Misto`,
+    explanation: `O número misto $${whole}\\frac{${num}}{${den}}$ é composto por uma parte inteira ($${whole}$) e uma fração ($${isNegative ? '-' : ''}\\frac{${num}}{${den}}$), representando a soma $${whole} + ${isNegative ? '-' : ''}\\frac{${num}}{${den}}$.`,
+    mathExpression: `${whole}\\frac{${num}}{${den}} = ${whole} + \\frac{${num}}{${den}}`,
+    beforeExpression: `\\mathbf{\\color{#e11d48}{${whole}\\frac{${num}}{${den}}}}`,
+    afterExpression: `${whole} + \\frac{${num}}{${den}}`,
+    tipOrRule: 'Definição: Um número misto expressa a soma de um número inteiro com uma fração.',
+  });
+
+  // Step 2: Multiply whole by denominator
+  steps.push({
+    stepNumber: 2,
+    title: `Multiplicação da Parte Inteira pelo Denominador`,
+    explanation: `Multiplicamos a parte inteira ($${absWhole}$) pelo denominador ($${den}$): $${absWhole} \\cdot ${den} = ${mult}$.`,
+    mathExpression: `${absWhole} \\cdot ${den} = ${mult}`,
+    beforeExpression: `\\frac{\\mathbf{\\color{#e11d48}{${absWhole} \\cdot ${den}}} + ${num}}{${den}}`,
+    afterExpression: `\\frac{${mult} + ${num}}{${den}}`,
+    tipOrRule: 'Fórmula de Conversão: A\\frac{B}{C} = \\frac{A \\cdot C + B}{C}.',
+  });
+
+  // Step 3: Add numerator
+  steps.push({
+    stepNumber: 3,
+    title: `Soma do Numerador ao Produto`,
+    explanation: `Somamos o numerador ($${num}$) ao produto obtido ($${mult}$): $${mult} + ${num} = ${improperNumerator}$. Este valor forma o novo numerador da fração imprópria.`,
+    mathExpression: `\\frac{${mult} + ${num}}{${den}} = ${rawFracLatex}`,
+    beforeExpression: `\\frac{\\mathbf{\\color{#e11d48}{${mult} + ${num}}}}{${den}}`,
+    afterExpression: `${rawFracLatex}`,
+    tipOrRule: 'Regra Prática: Novo Numerador = (Inteiro × Denominador) + Numerador original.',
+  });
+
+  // Step 4: Simplification if applicable
+  if (simplified.latex !== rawFracLatex) {
+    steps.push({
+      stepNumber: steps.length + 1,
+      title: `Simplificação da Fração Imprópria`,
+      explanation: `Dividimos o numerador e o denominador pelo Máximo Divisor Comum (MDC) para obter a fração irredutível.`,
+      mathExpression: `${rawFracLatex} = ${simplified.latex}`,
+      beforeExpression: `${rawFracLatex}`,
+      afterExpression: `${simplified.latex}`,
+    });
+  }
+
+  // Step 5: Normalized mixed form if numerator was >= denominator
+  if (num >= den && normRem > 0) {
+    steps.push({
+      stepNumber: steps.length + 1,
+      title: `Forma Mista Normalizada (Canônica)`,
+      explanation: `Como o numerador da fração original ($${num}$) era maior ou igual ao denominador ($${den}$), dividindo $${improperNumerator} \\div ${den}$ obtemos quociente $${Math.abs(normWhole)}$ e resto $${normRem}$, resultando no número misto normalizado $${normMixedLatex}$.`,
+      mathExpression: `${rawFracLatex} = ${normMixedLatex}`,
+    });
+  }
+
+  // Final decimal step
+  steps.push({
+    stepNumber: steps.length + 1,
+    title: `Valor Decimal Equivalente`,
+    explanation: `Dividindo o numerador pelo denominador ($${finalNum} \\div ${finalDen}$), encontramos o valor decimal correspondente: $${decStr}$.`,
+    mathExpression: `= ${decStr}`,
+  });
+
+  const alternativeForms = [normMixedLatex, decStr, simplified.latex].filter((v, idx, arr) => arr.indexOf(v) === idx);
+
+  return {
+    id: 'sol_off_' + Date.now(),
+    timestamp: Date.now(),
+    originalInput,
+    problemTitle: `Conversão de Número Misto: ${whole}\\frac{${num}}{${den}}`,
+    problemType: 'Aritmética / Números Mistos',
+    summary: `Conversão do número misto $${whole}\\frac{${num}}{${den}}$ em fração imprópria ($${simplified.latex}$) e forma decimal ($${decStr}$).`,
+    givenVariables: [
+      { name: 'Parte Inteira (A)', value: `${whole}`, description: 'Quantidade inteira' },
+      { name: 'Numerador (B)', value: `${num}`, description: 'Numerador da fração' },
+      { name: 'Denominador (C)', value: `${den}`, description: 'Denominador da fração' },
+    ],
+    formulasUsed: [
+      {
+        name: 'Conversão de Número Misto',
+        latex: 'A\\frac{B}{C} = \\frac{A \\cdot C + B}{C}',
+        explanation: 'Multiplica-se a parte inteira pelo denominador e soma-se o numerador, conservando o denominador.',
+      },
+    ],
+    steps,
+    finalAnswer: {
+      exact: simplified.latex,
+      approximate: `= ${decStr}`,
+      explanation: `O número misto $${whole}\\frac{${num}}{${den}}$ equivale à fração imprópria $${simplified.latex}$ ou ao número decimal $${decStr}.`,
+      alternativeForms,
+    },
+    verification: {
+      method: 'Verificação Inversa por Divisão Euclidiana',
+      mathExpression: `${finalNum} = ${normWhole} \\cdot ${den} + ${normRem} \\quad \\checkmark`,
+      isVerified: true,
+      notes: 'O quociente e resto confirmam a exatidão da conversão.',
+    },
+    similarPracticeProblems: [
+      {
+        id: 'p_mix_1',
+        problem: 'Converta o número misto 2\\frac{3}{5} em fração imprópria.',
+        latex: '2\\frac{3}{5}',
+        answer: '\\frac{13}{5}',
+        hint: 'Multiplique 2 por 5 e adicione 3.',
+      },
+      {
+        id: 'p_mix_2',
+        problem: 'Converta o número misto 3\\frac{1}{2} em fração imprópria.',
+        latex: '3\\frac{1}{2}',
+        answer: '\\frac{7}{2}',
+        hint: 'Multiplique 3 por 2 e adicione 1.',
+      },
+    ],
+  };
+}
+
+/**
  * Helper to translate LaTeX strings into clean MathJS expressions
  */
 export function cleanLatexForMathjs(rawInput: string): string {
@@ -1468,6 +1609,17 @@ export function solveOffline(input: string): MathSolution {
     .replace(/\s+/g, '')
     .replace(/x\^\{2\}/g, 'x^2')
     .replace(/X\^\{2\}/g, 'x^2');
+
+  // 0. Check for Standalone Mixed Number: A\frac{B}{C} e.g. 4\frac{7}{4} or 2\frac{1}{3}
+  const mixedSingleMatch = text.trim().match(/^([+-]?\d+)\s*\\frac\{(\d+)\}\{(\d+)\}(?:\s*=\s*\??)?$/);
+  if (mixedSingleMatch) {
+    const whole = parseInt(mixedSingleMatch[1], 10);
+    const num = parseInt(mixedSingleMatch[2], 10);
+    const den = parseInt(mixedSingleMatch[3], 10);
+    if (!isNaN(whole) && !isNaN(num) && !isNaN(den) && den !== 0) {
+      return solveMixedNumberOffline(whole, num, den, input);
+    }
+  }
 
   // 1. Check for Modular Inequality: |ax + b| <rel> c
   const modMatch = norm.match(/^\|([+-]?\d*(?:\.\d+)?)x([+-]\d+(?:\.\d+)?)?\|(<|>|\\le|\\ge|<=|>=)([+-]?\d+(?:\.\d+)?)$/i);

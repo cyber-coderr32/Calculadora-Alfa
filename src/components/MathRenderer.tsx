@@ -126,6 +126,67 @@ export const MathRenderer: React.FC<MathRendererProps> = ({
   );
 };
 
+/**
+ * Automatically detects unwrapped LaTeX formulas and math commands in regular text
+ * and wraps them in inline math delimiters ($...$) so that KaTeX renders them
+ * cleanly, preventing raw computer code / LaTeX syntax from showing to the user.
+ */
+export function cleanAndWrapLatexInText(rawText: string): string {
+  if (!rawText) return '';
+
+  // 1. Protect existing math blocks ($$...$$, $...$, \(...\), \[...\])
+  const protectedBlocks: string[] = [];
+  let s = rawText.replace(/(\$\$[\s\S]*?\$\$|\$[^\$\n]+?\$|\\\[[\s\S]*?\\\]|\\\([^\n]+?\\\))/g, (m) => {
+    const placeholder = `___MATH_BLOCK_${protectedBlocks.length}___`;
+    protectedBlocks.push(m);
+    return placeholder;
+  });
+
+  // 2. Identify unwrapped LaTeX formulas, fractions, roots and math symbols
+  // Matches:
+  // - Fractions with attached whole numbers or variables: 4\frac{7}{4}, A\frac{B}{C}, -\frac{1}{2}
+  // - Expressions starting with an assignment or relation: x = \frac{...}{...}
+  // - Standard LaTeX commands followed by balanced arguments or operators
+  const latexPattern = /(?:(?<=\s|^|\()([A-Za-z0-9]+)\s*=\s*)?(?:(?<=\s|^|\()([0-9]+|[A-Za-z]))?\\([a-zA-Z]+)(?:\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}|\[[^\]]*\])*(?:\s*(?:[\+\-\*\/=\<\>\^]|\\cdot|\\pm|\\le|\\ge|\\ne)\s*(?:[0-9A-Za-z\^\_\{\}]+|\\[a-zA-Z]+(?:\{[^{}]*\}|\[[^\]]*\])*))*/g;
+
+  s = s.replace(latexPattern, (match) => {
+    const trimmed = match.trim();
+    if (!trimmed) return match;
+    if (trimmed.startsWith('$') && trimmed.endsWith('$')) return match;
+    return `$${trimmed}$`;
+  });
+
+  // 3. Restore protected blocks
+  s = s.replace(/___MATH_BLOCK_(\d+)___/g, (_, idx) => protectedBlocks[Number(idx)] || '');
+
+  return s;
+}
+
+/**
+ * Clean plain text fallback to guarantee no raw backslash syntax or tech code leaks to the user
+ */
+function cleanPlainTextFallback(str: string): string {
+  if (!str) return '';
+  return str
+    .replace(/\\cdot/g, '·')
+    .replace(/\\times/g, '×')
+    .replace(/\\pm/g, '±')
+    .replace(/\\mp/g, '∓')
+    .replace(/\\le/g, '≤')
+    .replace(/\\ge/g, '≥')
+    .replace(/\\ne/g, '≠')
+    .replace(/\\approx/g, '≈')
+    .replace(/\\pi/g, 'π')
+    .replace(/\\Delta/g, 'Δ')
+    .replace(/\\infty/g, '∞')
+    .replace(/\\rightarrow|\\to/g, '→')
+    .replace(/\\leftarrow/g, '←')
+    .replace(/\\implies/g, '⇒')
+    .replace(/\\iff/g, '⇔')
+    .replace(/\\[a-zA-Z]+/g, '')
+    .replace(/[{}]/g, '');
+}
+
 // Component to render text with mixed inline $...$ or $$...$$ LaTeX formulas
 export const MixedTextRenderer: React.FC<{
   text: string;
@@ -134,18 +195,21 @@ export const MixedTextRenderer: React.FC<{
 }> = ({ text, className = '', inline = false }) => {
   if (!text) return null;
 
-  // Split text by $$...$$, $...$, \(...\), and \[...\]
+  // Split text by $$...$$, $...$, \(...\), and \[...\] after preprocessing
   const parts = useMemo(() => {
+    const processedText = cleanAndWrapLatexInText(text);
     const result: { type: 'text' | 'inline-math' | 'block-math'; content: string }[] = [];
     const regex = /(\$\$[\s\S]*?\$\$|\$[^\$\n]+?\$|\\\[[\s\S]*?\\\]|\\\([^\n]+?\\\))/g;
 
     let lastIndex = 0;
     let match;
 
-    while ((match = regex.exec(text)) !== null) {
+    while ((match = regex.exec(processedText)) !== null) {
       if (match.index > lastIndex) {
-        // Clean any accidental stray dollar signs in plain text
-        const plainStr = text.substring(lastIndex, match.index).replace(/\$/g, '');
+        // Clean any accidental stray dollar signs in plain text and replace symbols
+        const plainStr = cleanPlainTextFallback(
+          processedText.substring(lastIndex, match.index).replace(/\$/g, '')
+        );
         if (plainStr) {
           result.push({
             type: 'text',
@@ -180,8 +244,10 @@ export const MixedTextRenderer: React.FC<{
       lastIndex = regex.lastIndex;
     }
 
-    if (lastIndex < text.length) {
-      const remainingStr = text.substring(lastIndex).replace(/\$/g, '');
+    if (lastIndex < processedText.length) {
+      const remainingStr = cleanPlainTextFallback(
+        processedText.substring(lastIndex).replace(/\$/g, '')
+      );
       if (remainingStr) {
         result.push({
           type: 'text',

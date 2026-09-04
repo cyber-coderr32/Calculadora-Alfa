@@ -462,7 +462,7 @@ export default function App() {
       {/* Top Header Bar */}
       <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-2.5 sm:px-4 py-2 sm:py-2.5 w-full max-w-full transition-colors duration-200">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-1.5 sm:gap-2 w-full">
-          {/* Logo & Title: α Alfa */}
+          {/* Logo & Title: Alfa */}
           <div
             onClick={() => setCurrentMenu('solver')}
             className="flex items-center gap-1.5 sm:gap-2.5 cursor-pointer group min-w-0"
@@ -472,9 +472,8 @@ export default function App() {
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
-                <h1 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-1">
-                  <span className="font-serif text-lg sm:text-xl text-indigo-600 dark:text-indigo-400 font-black">α</span>
-                  <span>Alfa</span>
+                <h1 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
+                  Alfa
                 </h1>
                 <span className="hidden md:flex text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-emerald-500/20 text-indigo-700 dark:text-emerald-300 border border-indigo-200 dark:border-emerald-500/30 uppercase tracking-wide items-center gap-1 shrink-0">
                   <CheckCircle2 className="w-3 h-3" />
@@ -547,6 +546,22 @@ export default function App() {
                   <span className="hidden md:inline">Tela Cheia</span>
                 </>
               )}
+            </button>
+
+            {/* Quick Camera Scanner Button */}
+            <button
+              type="button"
+              id="btn-nav-camera-scanner"
+              onClick={() => setCurrentMenu('scanner')}
+              className={`h-8 px-2 sm:px-2.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer select-none active:scale-95 ${
+                currentMenu === 'scanner'
+                  ? 'bg-rose-600 text-white border-rose-500 shadow-md shadow-rose-600/30'
+                  : 'bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800/60'
+              }`}
+              title="Abrir Scanner de Caderno com Varredura Automática"
+            >
+              <Camera className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+              <span className="hidden xs:inline">Câmera</span>
             </button>
 
             {/* Offline / IA Status */}
@@ -633,12 +648,13 @@ export default function App() {
                     setTimeout(() => textareaRef.current?.focus(), 50);
                   }
                 }}
+                onOpenScanner={() => setCurrentMenu('scanner')}
                 textareaRef={textareaRef}
               />
             </div>
 
-            {/* Photomath Scientific Keyboard (Extended to fill available space) */}
-            <div className="w-full max-w-full flex-1 flex flex-col min-h-0">
+            {/* Photomath Scientific Keyboard (Ergonomic layout without vertical distortion) */}
+            <div className="w-full max-w-full mt-auto shrink-0">
               <MathKeyboard
                 input={inputProblem}
                 onInputChange={setInputProblem}
@@ -701,6 +717,7 @@ export default function App() {
               }}
               onTranscribeImage={handleTranscribeImage}
               isLoading={isLoading}
+              onClose={() => setCurrentMenu('solver')}
             />
           </div>
         )}

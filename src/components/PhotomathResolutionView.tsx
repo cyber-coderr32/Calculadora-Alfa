@@ -29,6 +29,7 @@ import {
   Printer,
   Loader2,
   HelpCircle,
+  Camera,
 } from 'lucide-react';
 
 interface PhotomathResolutionViewProps {
@@ -57,6 +58,7 @@ export const PhotomathResolutionView: React.FC<PhotomathResolutionViewProps> = (
   const [isExporting, setIsExporting] = useState<'png' | 'pdf' | 'txt' | null>(null);
   const [exportSuccess, setExportSuccess] = useState<string | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [showScannedImageModal, setShowScannedImageModal] = useState(false);
 
   const activeCardRef = useRef<HTMLDivElement | null>(null);
 
@@ -536,9 +538,39 @@ export const PhotomathResolutionView: React.FC<PhotomathResolutionViewProps> = (
             <MathRenderer math={solution.originalInput} block />
           </div>
           {solution.summary && (
-            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium">
-              {solution.summary}
-            </p>
+            <div className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
+              <MixedTextRenderer text={solution.summary} />
+            </div>
+          )}
+          {solution.imageUrl && (
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <img
+                  src={solution.imageUrl}
+                  alt="Exercício Escaneado"
+                  onClick={() => setShowScannedImageModal(true)}
+                  className="w-12 h-12 rounded-xl object-cover border border-slate-300 dark:border-slate-700 shadow-sm cursor-pointer hover:scale-105 transition-transform"
+                  title="Clique para ampliar a foto do exercício"
+                />
+                <div>
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                    <Camera className="w-3.5 h-3.5" />
+                    <span>Exercício do Caderno / Foto</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Capturado e resolvido automaticamente
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowScannedImageModal(true)}
+                className="px-2.5 py-1 text-xs font-semibold text-indigo-600 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 rounded-lg border border-indigo-200 dark:border-indigo-800/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors cursor-pointer"
+                data-export-ignore="true"
+              >
+                Ver Foto
+              </button>
+            </div>
           )}
         </div>
 
@@ -562,7 +594,7 @@ export const PhotomathResolutionView: React.FC<PhotomathResolutionViewProps> = (
                       {index + 1}
                     </span>
                     <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                      {step.title}
+                      <MixedTextRenderer text={step.title} inline />
                     </h4>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
@@ -608,7 +640,9 @@ export const PhotomathResolutionView: React.FC<PhotomathResolutionViewProps> = (
                     {(currentSubStep.tip || step.tipOrRule) && (
                       <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/40 text-amber-900 dark:text-amber-200 text-xs flex items-start gap-2">
                         <Lightbulb className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-                        <span>{currentSubStep.tip || step.tipOrRule}</span>
+                        <div className="flex-1 leading-relaxed">
+                          <MixedTextRenderer text={currentSubStep.tip || step.tipOrRule} />
+                        </div>
                       </div>
                     )}
                   </div>
@@ -745,15 +779,15 @@ export const PhotomathResolutionView: React.FC<PhotomathResolutionViewProps> = (
                       {index + 1}
                     </span>
                     <span className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate">
-                      {step.title}
+                      <MixedTextRenderer text={step.title} inline />
                     </span>
                   </div>
                   <div className="text-base sm:text-lg font-bold text-slate-700 dark:text-slate-300 font-mono truncate pl-7">
                     <MathRenderer math={step.beforeLatex || step.mathExpression} inline />
                   </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate pl-7">
-                    {step.explanation}
-                  </p>
+                  <div className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate pl-7">
+                    <MixedTextRenderer text={step.explanation} />
+                  </div>
                 </div>
 
                 <ChevronDown className="w-5 h-5 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200 shrink-0 transition-transform" />
@@ -875,6 +909,40 @@ export const PhotomathResolutionView: React.FC<PhotomathResolutionViewProps> = (
           </div>
         </div>
       </div>
+
+      {/* Lightbox Modal for Scanned Notebook Exercise */}
+      {showScannedImageModal && solution.imageUrl && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setShowScannedImageModal(false)}
+        >
+          <div
+            className="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-4 space-y-3 relative shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+              <div className="flex items-center gap-2 text-white font-bold text-sm">
+                <Camera className="w-4 h-4 text-indigo-400" />
+                <span>Foto do Exercício do Caderno</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowScannedImageModal(false)}
+                className="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="max-h-[70vh] overflow-auto rounded-xl flex items-center justify-center bg-black/50 p-2">
+              <img
+                src={solution.imageUrl}
+                alt="Foto do Exercício"
+                className="max-h-[65vh] w-auto object-contain rounded-lg shadow-lg"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
